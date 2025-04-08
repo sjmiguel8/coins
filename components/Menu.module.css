@@ -34,6 +34,15 @@
 .menuPanel h2 {
   color: white;
   margin: 0 0 15px 0;
+  text-align: center;
+}
+
+.menuSectionTitle {
+  color: #aaa;
+  font-size: 0.9em;
+  margin: 15px 0 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 5px;
 }
 
 .menuPanel button {
@@ -51,4 +60,8 @@
 
 .menuPanel button:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.activeButton {
+  background: rgba(65, 105, 225, 0.5) !important;
 }

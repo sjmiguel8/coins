@@ -1,6 +1,6 @@
 "use client"
 
-import { useGameContext } from "./game-context"
+import { useGameContext } from "@/components/game-context"
 import { Button } from "@/components/ui/button"
 import { Coins } from "lucide-react"
 
