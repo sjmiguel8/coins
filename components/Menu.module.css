@@ -1,0 +1,54 @@
+.menuContainer {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.menuIcon {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 15px;
+  font-size: 24px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.menuIcon:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.menuPanel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 200px;
+}
+
+.menuPanel h2 {
+  color: white;
+  margin: 0 0 15px 0;
+}
+
+.menuPanel button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.menuPanel button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
