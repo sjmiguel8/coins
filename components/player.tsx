@@ -1,11 +1,12 @@
 "use client"
 
-import { useRef, useEffect, useMemo } from "react"
+import { useRef, useEffect } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
-import { useKeyboardControls, KeyboardControls } from "@react-three/drei"
+import { useKeyboardControls } from "@react-three/drei"
 import { RigidBody, CapsuleCollider, type RapierRigidBody, useRapier } from "@react-three/rapier"
 import * as THREE from "three"
-import { useGameContext, GameProvider } from "./game-context"
+import { useGameContext } from "./game-context"
+import { Vector } from "@dimforge/rapier3d-compat"
 
 // Define proper types
 type Controls = {
@@ -19,31 +20,13 @@ type Controls = {
   scene3: boolean
 }
 
-export default function Game() {
-  return (
-    <GameProvider>
-      <KeyboardControls map={[
-        { name: "forward", keys: ["ArrowUp", "KeyW"] },
-        { name: "backward", keys: ["ArrowDown", "KeyS"] },
-        { name: "left", keys: ["ArrowLeft", "KeyA"] },
-        { name: "right", keys: ["ArrowRight", "KeyD"] },
-        { name: "jump", keys: ["Space"] },
-        { name: "scene1", keys: ["Digit1"] },
-        { name: "scene2", keys: ["Digit2"] },
-        { name: "scene3", keys: ["Digit3"] }
-      ]}>
-        <Player />
-      </KeyboardControls>
-    </GameProvider>
-  )
-}
-
-function Player() {
+// Export the Player component directly - this is the critical change
+export default function Player() {
   const playerRef = useRef<RapierRigidBody>(null)
   const [, getKeys] = useKeyboardControls<keyof Controls>()
   const { camera } = useThree()
   const { world } = useRapier()
-  const { changeScene } = useGameContext() // Make sure this hook exists and is properly exported
+  const { changeScene } = useGameContext()
 
   // Set up camera to follow player
   useEffect(() => {
@@ -89,7 +72,7 @@ function Player() {
     }
 
     // Apply movement
-    playerRef.current.applyImpulse({ x: impulse.x, y: impulse.y, z: impulse.z }, true)
+    playerRef.current.applyImpulse(impulse, true)
     playerRef.current.applyTorqueImpulse(torque, true)
 
     // Jump
@@ -97,12 +80,17 @@ function Player() {
       const position = playerRef.current.translation()
       position.y -= 0.31
       const ray = world.castRay(
-        { x: position.x, y: position.y, z: position.z },
-        { x: 0, y: -1, z: 0 },
-        0.15
+        {
+          origin: position, dir: { x: 0, y: -1, z: 0 },
+          pointAt: function (t: number): Vector {
+            throw new Error("Function not implemented.")
+          }
+        },
+        0.15,
+        true
       )
 
-      if (ray && ray.distance < 0.15) {
+      if (ray && ray.toi < 0.15) {
         playerRef.current.applyImpulse({ x: 0, y: 0.5, z: 0 }, true)
       }
     }

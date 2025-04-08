@@ -16,22 +16,11 @@ function SceneSelector() {
   const { currentScene } = useGameContext();
   
   return (
-    <KeyboardControls map={[
-      { name: "forward", keys: ["ArrowUp", "KeyW"] },
-      { name: "backward", keys: ["ArrowDown", "KeyS"] },
-      { name: "left", keys: ["ArrowLeft", "KeyA"] },
-      { name: "right", keys: ["ArrowRight", "KeyD"] },
-      { name: "jump", keys: ["Space"] },
-      { name: "scene1", keys: ["Digit1"] },
-      { name: "scene2", keys: ["Digit2"] },
-      { name: "scene3", keys: ["Digit3"] }
-    ]}>
-      <Physics>
-        {currentScene === "forest" && <ForestScene />}
-        {currentScene === "home" && <HomeScene />}
-        {currentScene === "store" && <StoreScene />}
-      </Physics>
-    </KeyboardControls>
+    <Physics debug>
+      {currentScene === "forest" && <ForestScene />}
+      {currentScene === "home" && <HomeScene />}
+      {currentScene === "store" && <StoreScene />}
+    </Physics>
   );
 }
 
@@ -49,9 +38,20 @@ export default function App() {
             castShadow 
             shadow-mapSize={[2048, 2048]} 
           />
-          <Suspense fallback={null}>
-            <SceneSelector />
-          </Suspense>
+          <KeyboardControls map={[
+            { name: "forward", keys: ["ArrowUp", "KeyW"] },
+            { name: "backward", keys: ["ArrowDown", "KeyS"] },
+            { name: "left", keys: ["ArrowLeft", "KeyA"] },
+            { name: "right", keys: ["ArrowRight", "KeyD"] },
+            { name: "jump", keys: ["Space"] },
+            { name: "scene1", keys: ["Digit1"] },
+            { name: "scene2", keys: ["Digit2"] },
+            { name: "scene3", keys: ["Digit3"] }
+          ]}>
+            <Suspense fallback={null}>
+              <SceneSelector />
+            </Suspense>
+          </KeyboardControls>
         </Canvas>
       </GameProvider>
     </main>
