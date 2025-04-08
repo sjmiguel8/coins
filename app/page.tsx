@@ -9,7 +9,7 @@ import HomeScene from "@/components/scenes/home-scene"
 import StoreScene from "@/components/scenes/store-scene"
 import { useGameContext } from "@/components/game-context"
 import { Suspense } from "react"
-import { KeyboardControls, Text } from '@react-three/drei'
+import { KeyboardControls } from '@react-three/drei'
 
 // Define controls ahead of time
 const controls = [
@@ -42,27 +42,29 @@ export default function App() {
     <main className="w-full h-screen overflow-hidden">
       <GameProvider>
         <KeyboardControls map={controls}>
-          <Menu />
-          <HUD />
-          <Canvas shadows>
-            <ambientLight intensity={0.8} />
-            <directionalLight 
-              position={[10, 10, 10]} 
-              intensity={1} 
-              castShadow 
-              shadow-mapSize={[2048, 2048]} 
-            />
-            {/* Improved physics settings for better movement */}
-            <Physics 
-              gravity={[0, -30, 0]}
-              timeStep={1/60}
-              interpolate={true}
-            >
-              <Suspense fallback={null}>
-                <SceneSelector />
-              </Suspense>
-            </Physics>
-          </Canvas>
+          <div className="relative w-full h-full">
+            <Canvas shadows>
+              <ambientLight intensity={0.8} />
+              <directionalLight 
+                position={[10, 10, 10]} 
+                intensity={1} 
+                castShadow 
+                shadow-mapSize={[2048, 2048]} 
+              />
+              <Physics 
+                gravity={[0, -30, 0]}
+                timeStep={1/60}
+                interpolate={true}
+              >
+                <Suspense fallback={null}>
+                  <SceneSelector />
+                </Suspense>
+              </Physics>
+            </Canvas>
+            {/* Moved HUD and Menu outside of Canvas to avoid z-index issues */}
+            <Menu />
+            <HUD />
+          </div>
         </KeyboardControls>
       </GameProvider>
     </main>

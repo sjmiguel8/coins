@@ -1,8 +1,8 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
-import { useKeyboardControls, Text } from "@react-three/drei"
+import { useKeyboardControls } from "@react-three/drei"
 import { RigidBody, CapsuleCollider, type RapierRigidBody } from "@react-three/rapier"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
@@ -25,7 +25,6 @@ export default function Player() {
   const [, getKeys] = useKeyboardControls<Controls>()
   const { camera } = useThree()
   const { changeScene } = useGameContext()
-  const [moveDirection, setMoveDirection] = useState<string | null>(null)
 
   // Set up camera to follow player
   useEffect(() => {
@@ -39,70 +38,41 @@ export default function Player() {
     // Get current keyboard state
     const keys = getKeys()
     
-    // Show which key is pressed in a more visual way
-    let currentDirection = null
-    if (keys.forward) currentDirection = "FORWARD ↑"
-    if (keys.backward) currentDirection = "BACKWARD ↓"
-    if (keys.left) currentDirection = "LEFT ←"
-    if (keys.right) currentDirection = "RIGHT →"
-    
-    if (keys.jump) currentDirection = currentDirection ? `${currentDirection} + JUMP` : "JUMP"
-    
-    // Only update state when direction changes to avoid rerenders
-    if (currentDirection !== moveDirection) {
-      setMoveDirection(currentDirection)
-    }
-    
     // Scene switching
     if (keys.scene1) changeScene("forest")
     if (keys.scene2) changeScene("home")
     if (keys.scene3) changeScene("store")
 
-    // Movement - increased strength for more responsive feel
-    const impulse = { x: 0, y: 0, z: 0 }
-    const torque = { x: 0, y: 0, z: 0 }
-
-    const impulseStrength = 1.2 * delta
-    const torqueStrength = 0.4 * delta
-
-    if (keys.forward) {
-      impulse.z -= impulseStrength
-      torque.x -= torqueStrength
-    }
-
-    if (keys.backward) {
-      impulse.z += impulseStrength
-      torque.x += torqueStrength
-    }
-
-    if (keys.right) {
-      impulse.x += impulseStrength
-      torque.z -= torqueStrength
-    }
-
-    if (keys.left) {
-      impulse.x -= impulseStrength
-      torque.z += torqueStrength
-    }
-
-    // Apply movement only if there's actual movement
-    if (impulse.x !== 0 || impulse.y !== 0 || impulse.z !== 0) {
-      playerRef.current.applyImpulse(impulse, true)
-    }
+    // FIXED MOVEMENT: Use direct velocity setting instead of impulses for more responsive control
+    const moveSpeed = 5.0 // Units per second
+    const velocity = playerRef.current.linvel()
     
-    if (torque.x !== 0 || torque.y !== 0 || torque.z !== 0) {
-      playerRef.current.applyTorqueImpulse(torque, true)
+    // Create our target velocity based on keypresses
+    let targetVelocity = { x: 0, y: velocity.y, z: 0 }
+    
+    if (keys.forward) targetVelocity.z = -moveSpeed
+    if (keys.backward) targetVelocity.z = moveSpeed
+    if (keys.left) targetVelocity.x = -moveSpeed
+    if (keys.right) targetVelocity.x = moveSpeed
+
+    // Combine directions when pressing multiple keys
+    if ((keys.forward || keys.backward) && (keys.left || keys.right)) {
+      // Normalize diagonal movement (multiply by ~0.7071)
+      targetVelocity.x *= 0.7071
+      targetVelocity.z *= 0.7071
     }
 
     // Jump - improved ground detection
     if (keys.jump) {
       const position = playerRef.current.translation()
-      
       // Simple ground check - just check if we're close to y=0
       if (position.y < 1.1) {
-        playerRef.current.applyImpulse({ x: 0, y: 0.8, z: 0 }, true)
+        targetVelocity.y = 10.0 // Strong upward velocity for jump
       }
     }
+    
+    // Set the calculated velocity directly
+    playerRef.current.setLinvel(targetVelocity, true)
 
     // Camera follow with smoothing
     const position = playerRef.current.translation()
@@ -120,43 +90,26 @@ export default function Player() {
   })
 
   return (
-    <>
-      <RigidBody
-        ref={playerRef}
-        colliders={false}
-        position={[0, 1, 0]}
-        friction={1}
-        linearDamping={3} /* Increased damping for better control */
-        angularDamping={3} /* Increased damping for better control */
-        enabledRotations={[false, false, false]}
-      >
-        <CapsuleCollider args={[0.5, 0.5]} />
-        <mesh castShadow>
-          <capsuleGeometry args={[0.5, 1, 4, 8]} />
-          <meshStandardMaterial color="#ff8800" />
-        </mesh>
-        <mesh position={[0, 0.5, -0.5]}>
-          <boxGeometry args={[0.5, 0.2, 0.1]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
-      </RigidBody>
-      
-      {/* Direction indicator */}
-      {moveDirection && (
-        <mesh position={[0, 3, 0]}>
-          <planeGeometry args={[1, 0.4]} />
-          <meshBasicMaterial transparent opacity={0.8} color="#000000" />
-          <Text
-            position={[0, 0, 0.01]}
-            color="white"
-            fontSize={0.2}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {moveDirection}
-          </Text>
-        </mesh>
-      )}
-    </>
+    <RigidBody
+      ref={playerRef}
+      colliders={false}
+      position={[0, 1, 0]}
+      friction={1}
+      linearDamping={4} // High damping to stop quickly when keys are released
+      angularDamping={5}
+      lockRotations
+      type="dynamic"
+      mass={1}
+    >
+      <CapsuleCollider args={[0.5, 0.5]} />
+      <mesh castShadow>
+        <capsuleGeometry args={[0.5, 1, 4, 8]} />
+        <meshStandardMaterial color="#ff8800" />
+      </mesh>
+      <mesh position={[0, 0.5, -0.5]}>
+        <boxGeometry args={[0.5, 0.2, 0.1]} />
+        <meshStandardMaterial color="black" />
+      </mesh>
+    </RigidBody>
   )
 }
