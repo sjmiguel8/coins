@@ -2,64 +2,86 @@
 
 import { useRef, useState } from "react"
 import { useFrame } from "@react-three/fiber"
-import { RigidBody } from "@react-three/rapier"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
 
 export default function Coin({ position }: { position: [number, number, number] }) {
   const coinRef = useRef<THREE.Mesh>(null)
-  const rigidBodyRef = useRef<any>(null)
   const [collected, setCollected] = useState(false)
   const { addCoins } = useGameContext()
+  
+  // Track if we're already processing collection to prevent multiple triggers
+  const isProcessing = useRef(false)
+  
+  // Use a simple position object for hover effect
+  const coinPosition = useRef({
+    x: position[0],
+    y: position[1],
+    z: position[2]
+  })
 
   useFrame((state, delta) => {
-    if (coinRef.current && !collected) {
-      coinRef.current.rotation.y += delta * 2
+    if (collected || isProcessing.current || !coinRef.current) return
 
-      // Make coin hover up and down
-      const time = state.clock.getElapsedTime()
-      const newY = position[1] + Math.sin(time * 2) * 0.1
-
-      // Add null check before using rigidBodyRef.current
-      if (rigidBodyRef.current) {
-        rigidBodyRef.current.setTranslation({ x: position[0], y: newY, z: position[2] })
-      }
-
-      // Check for player collision with player position (not camera)
-      // Look for objects with specific player marking in scene
-      const playerObjects = []
+    // Simple coin rotation - only rotate the coin itself
+    coinRef.current.rotation.y += delta * 2
+    
+    // Simple hover effect with sin wave
+    const time = state.clock.getElapsedTime()
+    const hoverY = position[1] + Math.sin(time * 2) * 0.1
+    
+    // Update coin position
+    coinRef.current.position.set(position[0], hoverY, position[2])
+    
+    // Find player in scene - very simple check
+    let playerMesh = null
+    let playerFound = false
+    
+    // Only do this check once every 10 frames to improve performance
+    if (Math.floor(state.clock.getElapsedTime() * 60) % 10 === 0 && !playerFound) {
       state.scene.traverse((object) => {
-        // Find the player mesh specifically
         if (object.userData && object.userData.isPlayer) {
-          playerObjects.push(object)
+          playerMesh = object
+          playerFound = true
         }
       })
+    }
+    
+    // Check player proximity only if we found a player
+    if (playerMesh && !isProcessing.current) {
+      const coinWorldPos = new THREE.Vector3()
+      coinRef.current.getWorldPosition(coinWorldPos)
       
-      if (playerObjects.length > 0) {
-        const playerObject = playerObjects[0]
-        const worldPosition = new THREE.Vector3()
-        coinRef.current.getWorldPosition(worldPosition)
+      const playerWorldPos = new THREE.Vector3()
+      playerMesh.getWorldPosition(playerWorldPos)
+      
+      const distance = coinWorldPos.distanceTo(playerWorldPos)
+      
+      if (distance < 2) {
+        // Prevent multiple collections
+        isProcessing.current = true
         
-        const playerPosition = new THREE.Vector3()
-        playerObject.getWorldPosition(playerPosition)
+        // Add coin to counter
+        addCoins(1)
         
-        // If player is close to coin, collect it
-        if (worldPosition.distanceTo(playerPosition) < 2) {
-          setCollected(true)
-          addCoins(1)
-        }
+        // Mark as collected without any animation
+        setCollected(true)
       }
     }
   })
 
+  // If collected, don't render anything
   if (collected) return null
 
   return (
-    <RigidBody ref={rigidBodyRef} type="fixed" colliders="ball" position={position} sensor>
-      <mesh ref={coinRef} castShadow>
-        <cylinderGeometry args={[0.5, 0.5, 0.1, 32]} />
-        <meshStandardMaterial color="#ffd700" metalness={0.8} roughness={0.2} />
-      </mesh>
-    </RigidBody>
+    <mesh
+      ref={coinRef}
+      position={[position[0], position[1], position[2]]}
+      rotation={[Math.PI/2, 0, 0]} // Make coin stand upright
+      castShadow
+    >
+      <cylinderGeometry args={[0.5, 0.5, 0.1, 32]} />
+      <meshStandardMaterial color="#ffd700" metalness={0.8} roughness={0.2} />
+    </mesh>
   )
 }

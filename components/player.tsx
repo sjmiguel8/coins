@@ -26,8 +26,15 @@ export default function Player() {
   const [, getKeys] = useKeyboardControls<Controls>()
   const { camera } = useThree()
   const { changeScene } = useGameContext()
+  
   // Store the last movement direction for smooth rotation
   const lastMovementDirection = useRef(new THREE.Vector3(0, 0, -1))
+  
+  // Track current velocity for smooth damping
+  const currentVelocity = useRef({ x: 0, y: 0, z: 0 })
+  
+  // Prevent key input processing during scene transitions
+  const isTransitioning = useRef(false)
 
   // Set up camera to follow player
   useEffect(() => {
@@ -36,26 +43,42 @@ export default function Player() {
   }, [camera])
 
   useFrame((state, delta) => {
-    if (!playerRef.current || !playerGroupRef.current) return
+    if (!playerRef.current || !playerGroupRef.current || isTransitioning.current) return
+    
+    // Clamp delta to prevent large jumps if frame rate drops
+    const clampedDelta = Math.min(delta, 0.1)
 
     // Get current keyboard state
     const keys = getKeys()
     
-    // Scene switching
-    if (keys.scene1) changeScene("forest")
-    if (keys.scene2) changeScene("home")
-    if (keys.scene3) changeScene("store")
+    // Scene switching with debounce
+    if (keys.scene1 || keys.scene2 || keys.scene3) {
+      isTransitioning.current = true
+      
+      if (keys.scene1) changeScene("forest")
+      else if (keys.scene2) changeScene("home")
+      else if (keys.scene3) changeScene("store")
+      
+      setTimeout(() => {
+        isTransitioning.current = false
+      }, 100)
+    }
 
-    // FIXED MOVEMENT: Use direct velocity setting instead of impulses for more responsive control
+    // FIXED MOVEMENT: Use more refined velocity control for smoother movement
     const moveSpeed = 5.0 // Units per second
-    const velocity = playerRef.current.linvel()
+    const rigidBodyVelocity = playerRef.current.linvel()
     
-    // Create our target velocity based on keypresses
-    let targetVelocity = { x: 0, y: velocity.y, z: 0 }
+    // Create target velocity based on keypresses
+    const targetVelocity = { 
+      x: 0, 
+      y: rigidBodyVelocity.y, // Preserve vertical velocity for jumps
+      z: 0 
+    }
     
-    // Store movement direction for rotation
+    // Movement direction vector for rotation calculation
     const movementDirection = new THREE.Vector3(0, 0, 0)
     
+    // Apply movement based on key presses
     if (keys.forward) {
       targetVelocity.z = -moveSpeed
       movementDirection.z -= 1
@@ -73,64 +96,95 @@ export default function Player() {
       movementDirection.x += 1
     }
 
-    // Combine directions when pressing multiple keys
+    // Normalize diagonal movement
     if ((keys.forward || keys.backward) && (keys.left || keys.right)) {
-      // Normalize diagonal movement (multiply by ~0.7071)
-      targetVelocity.x *= 0.7071
-      targetVelocity.z *= 0.7071
+      const length = Math.sqrt(targetVelocity.x * targetVelocity.x + targetVelocity.z * targetVelocity.z)
+      if (length > 0) {
+        targetVelocity.x = (targetVelocity.x / length) * moveSpeed
+        targetVelocity.z = (targetVelocity.z / length) * moveSpeed
+      }
+    }
+
+    // Smooth velocity transitions (acceleration and deceleration)
+    const smoothFactor = 10.0 * clampedDelta // Higher values = faster response
+    currentVelocity.current.x = THREE.MathUtils.lerp(
+      currentVelocity.current.x, 
+      targetVelocity.x, 
+      smoothFactor
+    )
+    currentVelocity.current.z = THREE.MathUtils.lerp(
+      currentVelocity.current.z, 
+      targetVelocity.z, 
+      smoothFactor
+    )
+    
+    // Apply the smoothed velocity - only if we have a valid reference
+    try {
+      playerRef.current.setLinvel({
+        x: currentVelocity.current.x,
+        y: targetVelocity.y,
+        z: currentVelocity.current.z
+      }, true)
+    } catch (e) {
+      // Prevent any errors from breaking the game if physics object is removed
+      console.warn("Could not set player velocity")
     }
 
     // Rotate player model to face movement direction
     if (movementDirection.lengthSq() > 0.01) {
-      // Save last non-zero direction
+      // Save non-zero direction for rotation
       lastMovementDirection.current.copy(movementDirection.normalize())
     }
     
-    // Always rotate the model to face the last movement direction
-    if (lastMovementDirection.current.lengthSq() > 0) {
-      // Create a rotation to match the movement direction
-      const targetRotation = new THREE.Quaternion()
-      const targetDirection = new THREE.Vector3()
-      targetDirection.copy(lastMovementDirection.current)
+    // Apply rotation smoothly - only if we're actually moving
+    if ((Math.abs(currentVelocity.current.x) > 0.1 || Math.abs(currentVelocity.current.z) > 0.1) && 
+        lastMovementDirection.current.lengthSq() > 0) {
       
-      // Calculate the angle to rotate
+      // Create target rotation
       const lookAt = new THREE.Matrix4()
       lookAt.lookAt(
         new THREE.Vector3(0, 0, 0),
-        targetDirection,
+        lastMovementDirection.current,
         new THREE.Vector3(0, 1, 0)
       )
       const targetQuaternion = new THREE.Quaternion()
       targetQuaternion.setFromRotationMatrix(lookAt)
       
       // Smoothly interpolate current rotation to target rotation
-      playerGroupRef.current.quaternion.slerp(targetQuaternion, 10 * delta)
+      const rotationSpeed = Math.min(1.0, 5.0 * clampedDelta) // Cap for stability
+      playerGroupRef.current.quaternion.slerp(targetQuaternion, rotationSpeed)
     }
 
     // Jump - improved ground detection
     if (keys.jump) {
       const position = playerRef.current.translation()
-      // Simple ground check - just check if we're close to y=0
       if (position.y < 1.1) {
-        targetVelocity.y = 10.0 // Strong upward velocity for jump
+        // Apply jump impulse only when grounded
+        playerRef.current.setLinvel({
+          x: currentVelocity.current.x,
+          y: 10.0, // Jump force
+          z: currentVelocity.current.z
+        }, true)
       }
     }
-    
-    // Set the calculated velocity directly
-    playerRef.current.setLinvel(targetVelocity, true)
 
     // Camera follow with smoothing
     const position = playerRef.current.translation()
+    
+    // Calculate camera position with smooth follow
     const cameraPosition = new THREE.Vector3()
     cameraPosition.copy(position)
     cameraPosition.z += 5
     cameraPosition.y += 3
-
+    
+    // Camera look target
     const cameraTarget = new THREE.Vector3()
     cameraTarget.copy(position)
     cameraTarget.y += 0.25
-
-    state.camera.position.lerp(cameraPosition, 5 * delta)
+    
+    // Smooth camera movement
+    const cameraSmoothFactor = 3 * clampedDelta
+    state.camera.position.lerp(cameraPosition, cameraSmoothFactor)
     state.camera.lookAt(cameraTarget)
   })
 
@@ -139,8 +193,8 @@ export default function Player() {
       ref={playerRef}
       colliders={false}
       position={[0, 1, 0]}
-      friction={1}
-      linearDamping={4} // High damping to stop quickly when keys are released
+      friction={0.2}
+      linearDamping={4} 
       angularDamping={5}
       lockRotations
       type="dynamic"
