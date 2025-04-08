@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import styles from './Menu.module.css'
 import { useGameContext } from './game-context'
 
 export default function Menu() {
@@ -58,44 +57,107 @@ export default function Menu() {
     };
   }, []);
 
+  const menuContainerStyle = {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    zIndex: 1000,
+  } as const;
+
+  const menuIconStyle = {
+    background: 'rgba(0, 0, 0, 0.7)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    padding: '10px 15px',
+    fontSize: '24px',
+    cursor: 'pointer',
+    transition: 'background 0.3s',
+  } as const;
+
+  const menuPanelStyle = {
+    position: 'absolute',
+    top: '100%',
+    right: '0',
+    marginTop: '10px',
+    background: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: '8px',
+    padding: '20px',
+    minWidth: '200px',
+  } as const;
+
+  const menuSectionTitleStyle = {
+    color: '#aaa',
+    fontSize: '0.9em',
+    margin: '15px 0 5px 0',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+    paddingBottom: '5px',
+  } as const;
+
+  const buttonStyle = {
+    display: 'block',
+    width: '100%',
+    padding: '10px',
+    margin: '5px 0',
+    background: 'rgba(255, 255, 255, 0.1)',
+    border: 'none',
+    color: 'white',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    transition: 'background 0.3s',
+  } as const;
+
+  const activeButtonStyle = {
+    ...buttonStyle,
+    background: 'rgba(65, 105, 225, 0.5)',
+  };
+
   return (
-    <div className={styles.menuContainer}>
+    <div style={menuContainerStyle}>
       <button 
-        className={styles.menuIcon} 
+        style={menuIconStyle}
         onClick={() => setIsOpen(!isOpen)}
       >
         ☰
       </button>
       
       {isOpen && (
-        <div className={styles.menuPanel}>
-          <h2>Menu</h2>
+        <div style={menuPanelStyle}>
+          <h2 style={{color: 'white', margin: '0 0 15px 0', textAlign: 'center'}}>Menu</h2>
           
-          <h3 className={styles.menuSectionTitle}>Scenes</h3>
+          <h3 style={menuSectionTitleStyle}>Scenes</h3>
           <button 
             onClick={() => { changeScene("forest"); setIsOpen(false); }}
-            className={currentScene === "forest" ? styles.activeButton : ""}
+            style={currentScene === "forest" ? activeButtonStyle : buttonStyle}
           >
             Forest
           </button>
           <button 
             onClick={() => { changeScene("home"); setIsOpen(false); }}
-            className={currentScene === "home" ? styles.activeButton : ""}
+            style={currentScene === "home" ? activeButtonStyle : buttonStyle}
           >
             Home
           </button>
           <button 
             onClick={() => { changeScene("store"); setIsOpen(false); }}
-            className={currentScene === "store" ? styles.activeButton : ""}
+            style={currentScene === "store" ? activeButtonStyle : buttonStyle}
           >
             Store
           </button>
           
-          <h3 className={styles.menuSectionTitle}>Options</h3>
-          <button onClick={toggleFullScreen}>
+          <h3 style={menuSectionTitleStyle}>Options</h3>
+          <button 
+            onClick={toggleFullScreen}
+            style={buttonStyle}
+          >
             {isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           </button>
-          <button onClick={() => setIsOpen(false)}>Resume</button>
+          <button 
+            onClick={() => setIsOpen(false)}
+            style={buttonStyle}
+          >
+            Resume
+          </button>
         </div>
       )}
     </div>

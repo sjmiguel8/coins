@@ -42,7 +42,8 @@ export default function App() {
     <main className="w-full h-screen overflow-hidden">
       <GameProvider>
         <KeyboardControls map={controls}>
-          <div className="relative w-full h-full">
+          {/* Canvas for the 3D scene */}
+          <div className="absolute inset-0">
             <Canvas shadows>
               <ambientLight intensity={0.8} />
               <directionalLight 
@@ -61,8 +62,13 @@ export default function App() {
                 </Suspense>
               </Physics>
             </Canvas>
-            {/* Moved HUD and Menu outside of Canvas to avoid z-index issues */}
-            <Menu />
+          </div>
+          
+          {/* UI layer that sits on top of the Canvas */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="pointer-events-auto">
+              <Menu />
+            </div>
             <HUD />
           </div>
         </KeyboardControls>

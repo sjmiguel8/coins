@@ -25,17 +25,29 @@ export default function Coin({ position }: { position: [number, number, number] 
         rigidBodyRef.current.setTranslation({ x: position[0], y: newY, z: position[2] })
       }
 
-      // Check for player collision
-      const worldPosition = new THREE.Vector3()
-      coinRef.current.getWorldPosition(worldPosition)
-
-      // This is a simplified collision check - in a real game, you'd use proper collision detection
-      const playerPosition = state.camera.position.clone()
-      playerPosition.y -= 2
-
-      if (worldPosition.distanceTo(playerPosition) < 1.5) {
-        setCollected(true)
-        addCoins(1)
+      // Check for player collision with player position (not camera)
+      // Look for objects with specific player marking in scene
+      const playerObjects = []
+      state.scene.traverse((object) => {
+        // Find the player mesh specifically
+        if (object.userData && object.userData.isPlayer) {
+          playerObjects.push(object)
+        }
+      })
+      
+      if (playerObjects.length > 0) {
+        const playerObject = playerObjects[0]
+        const worldPosition = new THREE.Vector3()
+        coinRef.current.getWorldPosition(worldPosition)
+        
+        const playerPosition = new THREE.Vector3()
+        playerObject.getWorldPosition(playerPosition)
+        
+        // If player is close to coin, collect it
+        if (worldPosition.distanceTo(playerPosition) < 2) {
+          setCollected(true)
+          addCoins(1)
+        }
       }
     }
   })

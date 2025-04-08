@@ -22,9 +22,12 @@ enum Controls {
 // Export the Player component directly
 export default function Player() {
   const playerRef = useRef<RapierRigidBody>(null)
+  const playerGroupRef = useRef<THREE.Group>(null)
   const [, getKeys] = useKeyboardControls<Controls>()
   const { camera } = useThree()
   const { changeScene } = useGameContext()
+  // Store the last movement direction for smooth rotation
+  const lastMovementDirection = useRef(new THREE.Vector3(0, 0, -1))
 
   // Set up camera to follow player
   useEffect(() => {
@@ -33,7 +36,7 @@ export default function Player() {
   }, [camera])
 
   useFrame((state, delta) => {
-    if (!playerRef.current) return
+    if (!playerRef.current || !playerGroupRef.current) return
 
     // Get current keyboard state
     const keys = getKeys()
@@ -50,16 +53,58 @@ export default function Player() {
     // Create our target velocity based on keypresses
     let targetVelocity = { x: 0, y: velocity.y, z: 0 }
     
-    if (keys.forward) targetVelocity.z = -moveSpeed
-    if (keys.backward) targetVelocity.z = moveSpeed
-    if (keys.left) targetVelocity.x = -moveSpeed
-    if (keys.right) targetVelocity.x = moveSpeed
+    // Store movement direction for rotation
+    const movementDirection = new THREE.Vector3(0, 0, 0)
+    
+    if (keys.forward) {
+      targetVelocity.z = -moveSpeed
+      movementDirection.z -= 1
+    }
+    if (keys.backward) {
+      targetVelocity.z = moveSpeed
+      movementDirection.z += 1
+    }
+    if (keys.left) {
+      targetVelocity.x = -moveSpeed
+      movementDirection.x -= 1
+    }
+    if (keys.right) {
+      targetVelocity.x = moveSpeed
+      movementDirection.x += 1
+    }
 
     // Combine directions when pressing multiple keys
     if ((keys.forward || keys.backward) && (keys.left || keys.right)) {
       // Normalize diagonal movement (multiply by ~0.7071)
       targetVelocity.x *= 0.7071
       targetVelocity.z *= 0.7071
+    }
+
+    // Rotate player model to face movement direction
+    if (movementDirection.lengthSq() > 0.01) {
+      // Save last non-zero direction
+      lastMovementDirection.current.copy(movementDirection.normalize())
+    }
+    
+    // Always rotate the model to face the last movement direction
+    if (lastMovementDirection.current.lengthSq() > 0) {
+      // Create a rotation to match the movement direction
+      const targetRotation = new THREE.Quaternion()
+      const targetDirection = new THREE.Vector3()
+      targetDirection.copy(lastMovementDirection.current)
+      
+      // Calculate the angle to rotate
+      const lookAt = new THREE.Matrix4()
+      lookAt.lookAt(
+        new THREE.Vector3(0, 0, 0),
+        targetDirection,
+        new THREE.Vector3(0, 1, 0)
+      )
+      const targetQuaternion = new THREE.Quaternion()
+      targetQuaternion.setFromRotationMatrix(lookAt)
+      
+      // Smoothly interpolate current rotation to target rotation
+      playerGroupRef.current.quaternion.slerp(targetQuaternion, 10 * delta)
     }
 
     // Jump - improved ground detection
@@ -101,15 +146,18 @@ export default function Player() {
       type="dynamic"
       mass={1}
     >
-      <CapsuleCollider args={[0.5, 0.5]} />
-      <mesh castShadow>
-        <capsuleGeometry args={[0.5, 1, 4, 8]} />
-        <meshStandardMaterial color="#ff8800" />
-      </mesh>
-      <mesh position={[0, 0.5, -0.5]}>
-        <boxGeometry args={[0.5, 0.2, 0.1]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
+      <group ref={playerGroupRef}>
+        <CapsuleCollider args={[0.5, 0.5]} />
+        <mesh castShadow userData={{ isPlayer: true }}>
+          <capsuleGeometry args={[0.5, 1, 4, 8]} />
+          <meshStandardMaterial color="#ff8800" />
+        </mesh>
+        {/* Face/front of player */}
+        <mesh position={[0, 0.5, -0.5]}>
+          <boxGeometry args={[0.5, 0.2, 0.1]} />
+          <meshStandardMaterial color="black" />
+        </mesh>
+      </group>
     </RigidBody>
   )
 }

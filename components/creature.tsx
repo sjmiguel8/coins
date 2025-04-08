@@ -1,89 +1,82 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useFrame } from "@react-three/fiber"
 import { RigidBody } from "@react-three/rapier"
 import * as THREE from "three"
 
 export default function Creature({ position }: { position: [number, number, number] }) {
-  const creatureRef = useRef<THREE.Group>(null)
   const rigidBodyRef = useRef<any>(null)
-  const [direction, setDirection] = useState(new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize())
+  const [direction, setDirection] = useState(() => Math.random() * Math.PI * 2)
+  const [moveTimer, setMoveTimer] = useState(0)
 
-  const changeDirectionTime = useRef(Math.random() * 3 + 2)
-  const elapsedTime = useRef(0)
+  // Change direction periodically
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setDirection(Math.random() * Math.PI * 2)
+    }, 2000 + Math.random() * 3000)
+
+    return () => clearInterval(intervalId)
+  }, [])
 
   useFrame((state, delta) => {
-    if (!creatureRef.current || !rigidBodyRef.current) return
+    if (!rigidBodyRef.current) return
 
-    // Update elapsed time
-    elapsedTime.current += delta
-
-    // Change direction randomly
-    if (elapsedTime.current > changeDirectionTime.current) {
-      setDirection(new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize())
-
-      changeDirectionTime.current = Math.random() * 3 + 2
-      elapsedTime.current = 0
-    }
-
-    // Move creature
-    const currentPos = rigidBodyRef.current.translation()
-    const newPos = {
-      x: currentPos.x + direction.x * delta * 1.5,
-      y: currentPos.y,
-      z: currentPos.z + direction.z * delta * 1.5,
-    }
-
-    // Boundary check - keep creatures in a certain area
-    const boundary = 15
-    if (Math.abs(newPos.x) > boundary || Math.abs(newPos.z) > boundary) {
-      setDirection(direction.clone().negate())
-      newPos.x = Math.max(-boundary, Math.min(boundary, newPos.x))
-      newPos.z = Math.max(-boundary, Math.min(boundary, newPos.z))
-    }
-
-    rigidBodyRef.current.setTranslation(newPos)
-
-    // Rotate creature to face movement direction
-    if (direction.length() > 0) {
-      const lookAt = new THREE.Vector3(currentPos.x + direction.x, currentPos.y, currentPos.z + direction.z)
-      const lookAtMatrix = new THREE.Matrix4().lookAt(
-        new THREE.Vector3(currentPos.x, currentPos.y, currentPos.z),
-        lookAt,
-        new THREE.Vector3(0, 1, 0),
-      )
-      const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(lookAtMatrix)
-      creatureRef.current.quaternion.slerp(targetQuaternion, delta * 2)
-    }
+    // Update move timer
+    setMoveTimer(prev => prev + delta)
+    
+    // Simple AI: move in the current direction
+    const speed = 1.5
+    const vx = Math.cos(direction) * speed * delta
+    const vz = Math.sin(direction) * speed * delta
+    
+    // Get current position
+    const position = rigidBodyRef.current.translation()
+    
+    // Calculate new position
+    const newX = position.x + vx
+    const newZ = position.z + vz
+    
+    // Set new position
+    rigidBodyRef.current.setTranslation({ x: newX, y: position.y, z: newZ }, true)
+    
+    // Rotate to face direction of movement
+    const targetRotation = new THREE.Quaternion()
+    targetRotation.setFromEuler(new THREE.Euler(0, direction, 0))
+    rigidBodyRef.current.setRotation(targetRotation, true)
   })
-
+  
   return (
-    <RigidBody ref={rigidBodyRef} type="dynamic" position={position} lockRotations colliders="ball">
-      <group ref={creatureRef}>
-        <mesh castShadow>
-          <sphereGeometry args={[0.5, 16, 16]} />
-          <meshStandardMaterial color="#4CAF50" />
-        </mesh>
-        {/* Eyes */}
-        <mesh position={[0.25, 0.25, 0.4]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial color="white" />
-        </mesh>
-        <mesh position={[-0.25, 0.25, 0.4]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial color="white" />
-        </mesh>
-        {/* Pupils */}
-        <mesh position={[0.25, 0.25, 0.5]}>
-          <sphereGeometry args={[0.05, 16, 16]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
-        <mesh position={[-0.25, 0.25, 0.5]}>
-          <sphereGeometry args={[0.05, 16, 16]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
-      </group>
+    <RigidBody 
+      ref={rigidBodyRef} 
+      type="dynamic" 
+      position={[position[0], position[1], position[2]]} 
+      lockRotations={false}
+      userData={{ isCreature: true }}
+    >
+      {/* Creature body */}
+      <mesh castShadow>
+        <sphereGeometry args={[0.4, 16, 16]} />
+        <meshStandardMaterial color="#8844aa" />
+      </mesh>
+      {/* Eyes */}
+      <mesh position={[0.2, 0.2, 0.3]} castShadow>
+        <sphereGeometry args={[0.1, 8, 8]} />
+        <meshStandardMaterial color="white" />
+      </mesh>
+      <mesh position={[-0.2, 0.2, 0.3]} castShadow>
+        <sphereGeometry args={[0.1, 8, 8]} />
+        <meshStandardMaterial color="white" />
+      </mesh>
+      {/* Pupils */}
+      <mesh position={[0.2, 0.2, 0.38]} castShadow>
+        <sphereGeometry args={[0.05, 8, 8]} />
+        <meshStandardMaterial color="black" />
+      </mesh>
+      <mesh position={[-0.2, 0.2, 0.38]} castShadow>
+        <sphereGeometry args={[0.05, 8, 8]} />
+        <meshStandardMaterial color="black" />
+      </mesh>
     </RigidBody>
   )
 }
