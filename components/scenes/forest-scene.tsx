@@ -30,8 +30,8 @@ export default function ForestScene() {
       <fog attach="fog" args={["#8bc34a", 30, 50]} />
 
       {/* Ground */}
-      <RigidBody type="fixed" colliders="trimesh">
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <RigidBody type="fixed">
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial color="#4b7d2f" />
         </mesh>

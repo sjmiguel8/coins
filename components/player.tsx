@@ -6,26 +6,24 @@ import { useKeyboardControls } from "@react-three/drei"
 import { RigidBody, CapsuleCollider, type RapierRigidBody, useRapier } from "@react-three/rapier"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
-import { Vector } from "@dimforge/rapier3d-compat"
 
 // Define proper types
-type Controls = {
-  forward: boolean
-  backward: boolean
-  left: boolean
-  right: boolean
-  jump: boolean
-  scene1: boolean
-  scene2: boolean
-  scene3: boolean
+enum Controls {
+  forward = 'forward',
+  backward = 'backward',
+  left = 'left',
+  right = 'right',
+  jump = 'jump',
+  scene1 = 'scene1',
+  scene2 = 'scene2',
+  scene3 = 'scene3'
 }
 
-// Export the Player component directly - this is the critical change
+// Export the Player component directly
 export default function Player() {
   const playerRef = useRef<RapierRigidBody>(null)
-  const [, getKeys] = useKeyboardControls<keyof Controls>()
+  const [, getKeys] = useKeyboardControls<Controls>()
   const { camera } = useThree()
-  const { world } = useRapier()
   const { changeScene } = useGameContext()
 
   // Set up camera to follow player
@@ -37,12 +35,15 @@ export default function Player() {
   useFrame((state, delta) => {
     if (!playerRef.current) return
 
-    const { forward, backward, left, right, jump, scene1, scene2, scene3 } = getKeys()
-
+    // Get current keyboard state
+    const keys = getKeys()
+    
+    console.log("Keys state:", keys) // Debug keyboard controls
+    
     // Scene switching
-    if (scene1) changeScene("forest")
-    if (scene2) changeScene("home")
-    if (scene3) changeScene("store")
+    if (keys.scene1) changeScene("forest")
+    if (keys.scene2) changeScene("home")
+    if (keys.scene3) changeScene("store")
 
     // Movement
     const impulse = { x: 0, y: 0, z: 0 }
@@ -51,46 +52,41 @@ export default function Player() {
     const impulseStrength = 0.6 * delta
     const torqueStrength = 0.2 * delta
 
-    if (forward) {
+    if (keys.forward) {
       impulse.z -= impulseStrength
       torque.x -= torqueStrength
     }
 
-    if (backward) {
+    if (keys.backward) {
       impulse.z += impulseStrength
       torque.x += torqueStrength
     }
 
-    if (right) {
+    if (keys.right) {
       impulse.x += impulseStrength
       torque.z -= torqueStrength
     }
 
-    if (left) {
+    if (keys.left) {
       impulse.x -= impulseStrength
       torque.z += torqueStrength
     }
 
-    // Apply movement
-    playerRef.current.applyImpulse(impulse, true)
-    playerRef.current.applyTorqueImpulse(torque, true)
+    // Apply movement only if there's actual movement
+    if (impulse.x !== 0 || impulse.y !== 0 || impulse.z !== 0) {
+      playerRef.current.applyImpulse(impulse, true)
+    }
+    
+    if (torque.x !== 0 || torque.y !== 0 || torque.z !== 0) {
+      playerRef.current.applyTorqueImpulse(torque, true)
+    }
 
-    // Jump
-    if (jump) {
+    // Jump - Simplify to avoid ray casting issues
+    if (keys.jump) {
       const position = playerRef.current.translation()
-      position.y -= 0.31
-      const ray = world.castRay(
-        {
-          origin: position, dir: { x: 0, y: -1, z: 0 },
-          pointAt: function (t: number): Vector {
-            throw new Error("Function not implemented.")
-          }
-        },
-        0.15,
-        true
-      )
-
-      if (ray && ray.toi < 0.15) {
+      
+      // Simple ground check - just check if we're close to y=0
+      if (position.y < 1.1) {
         playerRef.current.applyImpulse({ x: 0, y: 0.5, z: 0 }, true)
       }
     }
