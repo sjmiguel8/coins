@@ -40,9 +40,12 @@ export default function HUD() {
         </Button>
       </div>
 
-      {/* Controls help */}
-      <div className="absolute bottom-4 left-4 bg-black/50 text-white px-4 py-2 rounded">
-        <p>WASD: Move | Space: Jump | 1,2,3: Change Scene</p>
+      {/* Controls help with better visibility */}
+      <div className="absolute bottom-4 left-4 bg-black/70 text-white px-4 py-2 rounded-md">
+        <p className="font-semibold">CONTROLS:</p>
+        <p><span className="text-yellow-300">W/A/S/D or Arrow Keys:</span> Move</p> 
+        <p><span className="text-yellow-300">Space:</span> Jump</p>
+        <p><span className="text-yellow-300">1, 2, 3:</span> Change Scene</p>
       </div>
     </div>
   )

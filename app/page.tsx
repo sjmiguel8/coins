@@ -9,7 +9,7 @@ import HomeScene from "@/components/scenes/home-scene"
 import StoreScene from "@/components/scenes/store-scene"
 import { useGameContext } from "@/components/game-context"
 import { Suspense } from "react"
-import { KeyboardControls } from '@react-three/drei'
+import { KeyboardControls, Text } from '@react-three/drei'
 
 // Define controls ahead of time
 const controls = [
@@ -52,7 +52,12 @@ export default function App() {
               castShadow 
               shadow-mapSize={[2048, 2048]} 
             />
-            <Physics gravity={[0, -9.8, 0]}>
+            {/* Improved physics settings for better movement */}
+            <Physics 
+              gravity={[0, -30, 0]}
+              timeStep={1/60}
+              interpolate={true}
+            >
               <Suspense fallback={null}>
                 <SceneSelector />
               </Suspense>
