@@ -9,9 +9,13 @@ interface GameContextType {
   changeScene: (scene: string) => void;
   setHealth: (health: number) => void;
   hunger: number;
-  health: number; // Added health property
+  health: number;
   setHunger: (hunger: number) => void;
   maxHealth: number;
+  useVirtualJoystick: boolean;
+  setUseVirtualJoystick: (useVirtualJoystick: boolean) => void;
+  useClickToMove: boolean;
+  setUseClickToMove: (useClickToMove: boolean) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -34,6 +38,8 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
   const [currentScene, setCurrentScene] = useState("home");
   const [hunger, setHunger] = useState(100);
   const [health, setHealthState] = useState(maxHealth);
+  const [useVirtualJoystick, setUseVirtualJoystickState] = useState(true);
+  const [useClickToMove, setUseClickToMoveState] = useState(false);
 
   const addCoins = (amount: number) => {
     setCoins((prevCoins) => prevCoins + amount);
@@ -47,16 +53,28 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
     setHealthState(newHealth);
   };
 
+  const setUseVirtualJoystick = (useVirtualJoystick: boolean) => {
+    setUseVirtualJoystickState(useVirtualJoystick);
+  };
+
+  const setUseClickToMove = (useClickToMove: boolean) => {
+    setUseClickToMoveState(useClickToMove);
+  };
+
   const value: GameContextType = {
-    coins,
-    addCoins,
-    currentScene,
-    changeScene,
-    setHealth,
+    coins: coins,
+    addCoins: addCoins,
+    currentScene: currentScene,
+    changeScene: changeScene,
+    setHealth: setHealth,
     hunger: hunger,
     health: health,
-    setHunger,
+    setHunger: setHunger,
     maxHealth: maxHealth,
+    useVirtualJoystick: useVirtualJoystick,
+    setUseVirtualJoystick: setUseVirtualJoystick,
+    useClickToMove: useClickToMove,
+    setUseClickToMove: setUseClickToMove,
   };
 
   return (

@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Coins } from "lucide-react"
 import { useThree } from "@react-three/fiber"
 import { useEffect, useState } from "react"
+import MobileControls from "./MobileControls"
 
 export default function HUD() {
   const { coins, currentScene, changeScene, hunger, health } = useGameContext()
-  const { maxHealth } = useGameContext() as any; // Access maxHealth from the context
+  const { maxHealth, useVirtualJoystick } = useGameContext() as any; // Access maxHealth and useVirtualJoystick from the context
 
   const clampedHealth = Math.min(health, maxHealth); // Clamp health value
   const clampedHunger = Math.min(hunger, 100); // Clamp hunger value
@@ -26,6 +27,13 @@ export default function HUD() {
         <p>Health: {clampedHealth}</p>
         <p>Hunger: {clampedHunger}</p>
       </div>
+
+      {/* Conditionally render MobileControls */}
+      {useVirtualJoystick && (
+        <div className="absolute left-4 top-24">
+          <MobileControls />
+        </div>
+      )}
 
       {/* Scene navigation */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 pointer-events-auto">
