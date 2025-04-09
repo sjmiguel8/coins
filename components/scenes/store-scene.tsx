@@ -6,7 +6,6 @@ import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
 import Player from "../player"
 import * as THREE from "three"
-import CameraControls from "../CameraControls" 
 import NavigationSystem from "../NavigationSystem" // Add this
 import { useGameContext } from "../game-context"
 
@@ -52,7 +51,6 @@ export default function StoreScene() {
   
   return (
     <>
-      <CameraControls />
       <NavigationSystem /> {/* Add this line */}
       <fog attach="fog" args={["#97809d", 30, 50]} />
       <ambientLight intensity={0.7} />

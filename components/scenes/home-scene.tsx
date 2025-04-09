@@ -6,7 +6,6 @@ import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
 import Player from "../player"
 import * as THREE from "three"
-import CameraControls from "../CameraControls" // Import CameraControls
 import NavigationSystem from "../NavigationSystem" // Add this
 import { Mesh, ShaderMaterial, DoubleSide } from 'three';
 
@@ -44,7 +43,6 @@ export default function HomeScene() {
   
   return (
     <>
-      <CameraControls /> {/* Add CameraControls here */}
       <NavigationSystem /> {/* Add this line */}
       <fog attach="fog" args={["#222233", 30, 50]} />
       <ambientLight intensity={0.8} />

@@ -9,6 +9,10 @@ import { useGameContext } from "./game-context";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { AnimationMixer } from 'three';
 
+// Move these outside the component to prevent re-creation on every render
+const lastMovementDirection = new THREE.Vector3(0, 0, -1);
+const currentVelocity = { x: 0, y: 0, z: 0 };
+
 enum Controls {
   forward = "forward",
   backward = "backward",
@@ -18,6 +22,7 @@ enum Controls {
   scene1 = "scene1",
   scene2 = "scene2",
   scene3 = "scene3",
+  attack = "attack",
 }
 
 interface PlayerProps {
@@ -30,15 +35,24 @@ export type NavigationEvent = {
   enabled: boolean;
 }
 
+// Define the GameContextType interface
+interface GameContextType {
+  camera: THREE.PerspectiveCamera;
+  controls: any;
+  scene: THREE.Scene;
+  setHealth: (health: number) => void;
+  hunger: number;
+  setHunger: (hunger: number) => void;
+  changeScene: (sceneName: string) => void;
+}
+
 export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
-  const [, getKeys] = useKeyboardControls<Controls>();
-  const { camera, controls, scene } = useThree();
-  const { changeScene } = useGameContext();
+  const [, getKeys] = useKeyboardControls<Controls>(); // Move useKeyboardControls here
+  const { camera, controls, scene, setHealth: updateHealth, hunger: initialHunger, setHunger, changeScene } = useGameContext() as unknown as GameContextType;
 
-  const lastMovementDirection = useRef(new THREE.Vector3(0, 0, -1));
-  const currentVelocity = useRef({ x: 0, y: 0, z: 0 });
+  // Use useRef instead of creating new objects on each render
   const isTransitioning = useRef(false);
 
   // Navigation state for click-to-move
@@ -59,6 +73,63 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   // Load the phoenix bird model
   const [model, setModel] = useState<THREE.Group | null>(null);
   const [mixer, setMixer] = useState<AnimationMixer | null>(null);
+
+  const [lastAttacked, setLastAttacked] = useState<number>(0);
+  const [isDead, setIsDead] = useState(false);
+  const [respawnPosition, setRespawnPosition] = useState<[number, number, number]>(startPosition);
+  const [showHealthBar, setShowHealthBar] = useState(true); // Add this line
+
+  // Attack variables
+  const [isAttacking, setIsAttacking] = useState(false);
+  const attackRange = 2; // Attack range
+  const attackDamage = 20; // Damage dealt per attack
+
+  const maxHealth = 1800; // Set maximum health
+  const defaultHealth = maxHealth; // Set default health to maxHealth
+
+  const [localHealth, setLocalHealth] = useState(defaultHealth); // Use local state for health
+  
+  // Use refs to store previous values for comparison
+  const prevLocalHealthRef = useRef(localHealth);
+  const prevInitialHungerRef = useRef(initialHunger);
+  
+  // Update the ref values when the actual values change
+  useEffect(() => {
+    prevLocalHealthRef.current = localHealth;
+  }, [localHealth]);
+  
+  useEffect(() => {
+    prevInitialHungerRef.current = initialHunger;
+  }, [initialHunger]);
+
+  // Function to handle attacking
+  const attack = () => {
+    if (!playerRef.current) return;
+
+    const playerPosition = playerRef.current.translation();
+    const attackPosition = new THREE.Vector3(playerPosition.x, playerPosition.y, playerPosition.z);
+
+    scene.traverse((object: THREE.Object3D) => {
+      if (object.userData && object.userData.isCreature) {
+        const creaturePosition = new THREE.Vector3();
+        object.getWorldPosition(creaturePosition);
+
+        const distance = attackPosition.distanceTo(creaturePosition);
+
+        if (distance <= attackRange) {
+          // Deal damage to the creature
+          const damageEvent = new CustomEvent('creature-damage', {
+            detail: {
+              target: object,
+              damage: attackDamage,
+              attacker: playerRef.current
+            }
+          });
+          window.dispatchEvent(damageEvent);
+        }
+      }
+    });
+  };
 
   // Listen for click-to-move events from the scene
   useEffect(() => {
@@ -96,6 +167,16 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     };
   }, []);
 
+  // Add attack control
+  useEffect(() => {
+    const keys = getKeys();
+    if (keys.attack && !isAttacking) {
+      setIsAttacking(true);
+      attack();
+      setTimeout(() => setIsAttacking(false), 500); // Attack cooldown
+    }
+  }, [getKeys, isAttacking, attack]);
+
   // GLB model loading effect
   useEffect(() => {
     const loader = new GLTFLoader();
@@ -104,7 +185,6 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     loader.load(
       url,
       (gltf) => {
-        // ...existing code...
         const loadedModel = gltf.scene;
 
         // Adjust the model to be visible
@@ -125,29 +205,22 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
         const newMixer = new AnimationMixer(loadedModel);
         setMixer(newMixer);
 
-        // Log animations for debugging
-        console.log('Available animations:', gltf.animations);
-
         if (gltf.animations.length > 0) {
           // Play the first animation by default
           const action = newMixer.clipAction(gltf.animations[0]);
           action.play();
         }
-
-        console.log('Model loaded!', gltf);
       },
-      (xhr) => {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-      },
+      undefined,
       (error) => {
-        console.error('An error happened loading the GLTF:', error);
+        console.error('Error loading model:', error);
       }
     );
-  }, [scene]);
+  }, []);
 
   // Position reset and camera setup effect
   useEffect(() => {
-    if (playerRef.current) {
+    if (playerRef.current && camera) {
       playerRef.current.setTranslation(
         { x: startPosition[0], y: startPosition[1], z: startPosition[2] },
         true
@@ -156,11 +229,20 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       playerRef.current.wakeUp();
     }
 
-    camera.position.set(startPosition[0], startPosition[1] + 6, startPosition[2] + 10);
+    if (camera) {
+      camera.position.set(startPosition[0], startPosition[1] + 6, startPosition[2] + 10);
+    }
   }, [camera, startPosition]);
 
+  // Camera rotation effect
+  useEffect(() => {
+    if (camera) {
+      camera.lookAt(new THREE.Vector3(0, 0, 0));
+    }
+  }, [camera]);
+  
   // Main game loop - handles movement, physics, animations
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!playerRef.current || !playerGroupRef.current || isTransitioning.current) return;
 
     // Update the animation mixer each frame
@@ -203,7 +285,9 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
 
     // Get camera's quaternion for direction-relative movement
     const cameraQuaternion = new THREE.Quaternion();
-    camera.getWorldQuaternion(cameraQuaternion);
+    if (camera) {
+      camera.getWorldQuaternion(cameraQuaternion);
+    }
 
     // Create movement vectors
     const forwardVector = new THREE.Vector3(0, 0, -1);
@@ -277,13 +361,13 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
 
     // Smooth movement
     const smoothFactor = 10.0 * clampedDelta;
-    currentVelocity.current.x = THREE.MathUtils.lerp(
-      currentVelocity.current.x,
+    currentVelocity.x = THREE.MathUtils.lerp(
+      currentVelocity.x,
       targetVelocity.x,
       smoothFactor
     );
-    currentVelocity.current.z = THREE.MathUtils.lerp(
-      currentVelocity.current.z,
+    currentVelocity.z = THREE.MathUtils.lerp(
+      currentVelocity.z,
       targetVelocity.z,
       smoothFactor
     );
@@ -292,9 +376,9 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     try {
       playerRef.current.setLinvel(
         {
-          x: currentVelocity.current.x,
+          x: currentVelocity.x,
           y: targetVelocity.y,
-          z: currentVelocity.current.z,
+          z: currentVelocity.z,
         },
         true
       );
@@ -304,18 +388,18 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
 
     // Handle rotation - update last movement direction if moving
     if (movementDirection.lengthSq() > 0.01) {
-      lastMovementDirection.current.copy(movementDirection.normalize());
+      lastMovementDirection.copy(movementDirection.normalize());
     }
 
     // Rotate player model to face movement direction
     if (
-      (Math.abs(currentVelocity.current.x) > 0.1 || Math.abs(currentVelocity.current.z) > 0.1) &&
-      lastMovementDirection.current.lengthSq() > 0
+      (Math.abs(currentVelocity.x) > 0.1 || Math.abs(currentVelocity.z) > 0.1) &&
+      lastMovementDirection.lengthSq() > 0
     ) {
       const lookAt = new THREE.Matrix4();
       lookAt.lookAt(
         new THREE.Vector3(0, 0, 0),
-        lastMovementDirection.current,
+        lastMovementDirection,
         new THREE.Vector3(0, 1, 0)
       );
       const targetQuaternion = new THREE.Quaternion();
@@ -331,9 +415,9 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       if (position.y < 1.1) {
         playerRef.current.setLinvel(
           {
-            x: currentVelocity.current.x,
+            x: currentVelocity.x,
             y: 10.0,
-            z: currentVelocity.current.z,
+            z: currentVelocity.z,
           },
           true
         );

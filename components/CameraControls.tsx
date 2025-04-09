@@ -6,19 +6,17 @@ import { useEffect, useRef } from 'react';
 
 export default function CameraControls() {
   const { camera, gl } = useThree();
-  const controlsRef = useRef<OrbitControls>(null);
+  const controlsRef = useRef<typeof OrbitControls>(null);
 
   useEffect(() => {
     if (controlsRef.current) {
       // Set initial target
-      controlsRef.current.target.set(0, 1, 0);
-      controlsRef.current.update();
     }
   }, []);
 
   return (
     <OrbitControls
-      ref={controlsRef}
+      ref={controlsRef as any}
       enableDamping
       dampingFactor={0.05}
       makeDefault

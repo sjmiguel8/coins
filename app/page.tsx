@@ -17,6 +17,7 @@ import StoreScene from "@/components/scenes/store-scene"
 import { Suspense, useState, useEffect, Component } from "react"
 import { KeyboardControls } from '@react-three/drei'
 import VirtualJoystick from '../components/VirtualJoystick'; // Add this line
+import CameraControls from '../components/CameraControls'; // Add this line
 
 class ErrorBoundary extends Component<{children: React.ReactNode, fallback: React.ReactNode}> {
   state = { hasError: false };
@@ -50,10 +51,30 @@ function SceneSelector() {
   const { currentScene } = useGameContext();
   
   switch (currentScene) {
-    case "forest": return <ForestScene />;
-    case "home": return <HomeScene />;
-    case "store": return <StoreScene />;
-    default: return <ForestScene />;
+    case "forest": return (
+        <>
+            <CameraControls />
+            <ForestScene />
+        </>
+    );
+    case "home": return (
+        <>
+            <CameraControls />
+            <HomeScene />
+        </>
+    );
+    case "store": return (
+        <>
+            <CameraControls />
+            <StoreScene />
+        </>
+    );
+    default: return (
+        <>
+            <CameraControls />
+            <ForestScene />
+        </>
+    );
   }
 }
 
@@ -104,7 +125,7 @@ export default function App() {
     // Poll for shop state changes
     const checkShopState = setInterval(() => {
       // @ts-ignore - Access custom property on window
-      if (window.duckShopOpen !== undefined) {
+      if (typeof window.duckShopOpen !== 'undefined') {
         setShopOpen(window.duckShopOpen);
       }
     }, 100);

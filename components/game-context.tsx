@@ -7,6 +7,11 @@ interface GameContextType {
   addCoins: (amount: number) => void;
   currentScene: string;
   changeScene: (scene: string) => void;
+  setHealth: (health: number) => void;
+  hunger: number;
+  health: number; // Added health property
+  setHunger: (hunger: number) => void;
+  maxHealth: number;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -24,8 +29,11 @@ interface GameContextProviderProps {
 }
 
 export const GameContextProvider: React.FC<GameContextProviderProps> = ({ children }) => {
+  const maxHealth = 1800;
   const [coins, setCoins] = useState(0);
   const [currentScene, setCurrentScene] = useState("home");
+  const [hunger, setHunger] = useState(100);
+  const [health, setHealthState] = useState(maxHealth);
 
   const addCoins = (amount: number) => {
     setCoins((prevCoins) => prevCoins + amount);
@@ -35,11 +43,20 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
     setCurrentScene(scene);
   };
 
+  const setHealth = (newHealth: number) => {
+    setHealthState(newHealth);
+  };
+
   const value: GameContextType = {
     coins,
     addCoins,
     currentScene,
     changeScene,
+    setHealth,
+    hunger: hunger,
+    health: health,
+    setHunger,
+    maxHealth: maxHealth,
   };
 
   return (

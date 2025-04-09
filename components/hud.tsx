@@ -3,9 +3,15 @@
 import { useGameContext } from "@/components/game-context"
 import { Button } from "@/components/ui/button"
 import { Coins } from "lucide-react"
+import { useThree } from "@react-three/fiber"
+import { useEffect, useState } from "react"
 
 export default function HUD() {
-  const { coins, currentScene, changeScene } = useGameContext()
+  const { coins, currentScene, changeScene, hunger, health } = useGameContext()
+  const { maxHealth } = useGameContext() as any; // Access maxHealth from the context
+
+  const clampedHealth = Math.min(health, maxHealth); // Clamp health value
+  const clampedHunger = Math.min(hunger, 100); // Clamp hunger value
 
   return (
     <div className="absolute inset-0 pointer-events-none z-50">
@@ -13,6 +19,12 @@ export default function HUD() {
       <div className="absolute top-4 right-4 bg-black/50 text-white px-4 py-2 rounded-full flex items-center gap-2">
         <Coins className="h-5 w-5 text-yellow-400" />
         <span className="font-bold">{coins}</span>
+      </div>
+
+      {/* Health and Hunger bars */}
+      <div className="absolute top-4 left-4 bg-black/50 text-white px-4 py-2 rounded-md">
+        <p>Health: {clampedHealth}</p>
+        <p>Hunger: {clampedHunger}</p>
       </div>
 
       {/* Scene navigation */}
