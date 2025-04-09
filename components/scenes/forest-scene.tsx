@@ -56,7 +56,7 @@ export default function ForestScene() {
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 5, 10]} />
+      {/*<PerspectiveCamera makeDefault position={[0, 5, 10]} />*/}
       <CameraControls />
       <fog attach="fog" args={["#222233", 30, 50]} />
       <ambientLight intensity={0.8} />
