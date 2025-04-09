@@ -15,6 +15,7 @@ export default function CameraControls() {
   const PI_2 = Math.PI / 2;
 
   const onMouseDown = (event: MouseEvent) => {
+    event.preventDefault(); // Prevent default behavior
     setIsDragging(true);
     setPreviousMousePosition({
       x: event.clientX,
@@ -23,10 +24,12 @@ export default function CameraControls() {
   };
 
   const onMouseUp = (event: MouseEvent) => {
+    event.preventDefault(); // Prevent default behavior
     setIsDragging(false);
   };
 
   const onMouseMove = (event: MouseEvent) => {
+    event.preventDefault(); // Prevent default behavior
     if (!isDragging) return;
 
     const deltaMove = {
@@ -49,6 +52,7 @@ export default function CameraControls() {
 
   // Touch event handlers
   const onTouchStart = (event: TouchEvent) => {
+    event.preventDefault(); // Prevent default behavior
     setIsDragging(true);
     setPreviousMousePosition({
       x: event.touches[0].clientX,
@@ -57,10 +61,12 @@ export default function CameraControls() {
   };
 
   const onTouchEnd = (event: TouchEvent) => {
+    event.preventDefault(); // Prevent default behavior
     setIsDragging(false);
   };
 
   const onTouchMove = (event: TouchEvent) => {
+    event.preventDefault(); // Prevent default behavior
     if (!isDragging) return;
 
     const deltaMove = {
@@ -81,30 +87,39 @@ export default function CameraControls() {
   };
 
   useEffect(() => {
-    gl.domElement.addEventListener('mousedown', onMouseDown);
-    gl.domElement.addEventListener('mouseup', onMouseUp);
-    gl.domElement.addEventListener('mouseout', onMouseUp);
-    gl.domElement.addEventListener('mousemove', onMouseMove);
+    const element = gl.domElement; // Store the element in a variable
+
+    const handleMouseDown = (e: MouseEvent) => onMouseDown(e);
+    const handleMouseUp = (e: MouseEvent) => onMouseUp(e);
+    const handleMouseMove = (e: MouseEvent) => onMouseMove(e);
+    const handleTouchStart = (e: TouchEvent) => onTouchStart(e);
+    const handleTouchEnd = (e: TouchEvent) => onTouchEnd(e);
+    const handleTouchMove = (e: TouchEvent) => onTouchMove(e);
+
+    element.addEventListener('mousedown', handleMouseDown);
+    element.addEventListener('mouseup', handleMouseUp);
+    element.addEventListener('mouseout', handleMouseUp);
+    element.addEventListener('mousemove', handleMouseMove);
 
     // Add touch event listeners
-    gl.domElement.addEventListener('touchstart', onTouchStart);
-    gl.domElement.addEventListener('touchend', onTouchEnd);
-    gl.domElement.addEventListener('touchcancel', onTouchEnd);
-    gl.domElement.addEventListener('touchmove', onTouchMove);
+    element.addEventListener('touchstart', handleTouchStart);
+    element.addEventListener('touchend', handleTouchEnd);
+    element.addEventListener('touchcancel', handleTouchEnd);
+    element.addEventListener('touchmove', handleTouchMove);
 
     return () => {
-      gl.domElement.removeEventListener('mousedown', onMouseDown);
-      gl.domElement.removeEventListener('mouseup', onMouseUp);
-      gl.domElement.removeEventListener('mouseout', onMouseUp);
-      gl.domElement.removeEventListener('mousemove', onMouseMove);
+      element.removeEventListener('mousedown', handleMouseDown);
+      element.removeEventListener('mouseup', handleMouseUp);
+      element.removeEventListener('mouseout', handleMouseUp);
+      element.removeEventListener('mousemove', handleMouseMove);
 
       // Remove touch event listeners
-      gl.domElement.removeEventListener('touchstart', onTouchStart);
-      gl.domElement.removeEventListener('touchend', onTouchEnd);
-      gl.domElement.removeEventListener('touchcancel', onTouchEnd);
-      gl.domElement.removeEventListener('touchmove', onTouchMove);
+      element.removeEventListener('touchstart', handleTouchStart);
+      element.removeEventListener('touchend', handleTouchEnd);
+      element.removeEventListener('touchcancel', handleTouchEnd);
+      element.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isDragging, previousMousePosition]);
+  }, [gl, isDragging, previousMousePosition]); // Add gl to the dependency array
 
   return null; // This component doesn't render anything
 }

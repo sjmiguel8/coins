@@ -15,7 +15,8 @@ export default function ForestScene() {
   const { scene } = useThree()
   const [coins, setCoins] = useState<[number, number, number][]>([])
 
-  // Load decorative tree model
+  // Load forest ground model
+  const { scene: forestGroundScene } = useGLTF('/low_poly_forest.glb') // Changed to the low poly forest
   const { scene: treeScene } = useGLTF('/decorative_tree.glb')
 
   useEffect(() => {
@@ -69,10 +70,13 @@ export default function ForestScene() {
         </mesh>
       </RigidBody>
 
-      {/* Gradient Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.5, 0]} material={groundMaterial}>
-        <planeGeometry args={[100, 100]} />
-      </mesh>
+      {/* Forest Ground Model */}
+      <primitive
+        object={forestGroundScene.clone()}
+        position={[0, -0.2, 0]} // Adjust ground position
+        scale={[1, 1, 0.8]}
+        receiveShadow
+      />
 
       {/* Trees - reduced number */}
       {Array.from({ length: 20 }).map((_, i) => {
@@ -94,7 +98,7 @@ export default function ForestScene() {
       })}
 
       {/* Player */}
-      <Player startPosition={[0, 1.5, 0]} />
+      <Player startPosition={[0, 1.3, 0]} /> // Adjust player start position
 
       {/* Coins */}
       {coins.map((position, i) => (
@@ -109,9 +113,13 @@ export default function ForestScene() {
         const z = Math.sin(angle) * radius
         return <Creature key={i} position={[x, 0.5, z]} />
       })}
-    </>
+    </> // Changed to the low poly forest
   )
 }
 
-useGLTF.preload('/decorative_tree.glb')
 
+
+
+
+useGLTF.preload('/decorative_tree.glb')
+useGLTF.preload('/low_poly_forest.glb') // Changed to the low poly forest
