@@ -25,3 +25,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# OS generated files #
+.DS_Store*
+Thumbs.db
+
+# Logs
+*.log
+*.csv
+
+# Editor related
+.idea/
+.vscode/
+*.suo
+*.swp
+*.swo
+
+# Temporary files
+*~
+\#*\#
+
+# Specific to this project
+/public/uploads/ # If you have an uploads directory that shouldn't be tracked
