@@ -1,5 +1,5 @@
 "use client"
-import { GameProvider } from "@/components/game-context"
+import { GameContextProvider as GameProvider, useGameContext } from "@/components/game-context"
 import Menu from '../components/Menu'
 import HUD from '../components/hud'
 import { Canvas } from '@react-three/fiber'
@@ -7,7 +7,6 @@ import { Physics } from '@react-three/rapier'
 import ForestScene from "@/components/scenes/forest-scene"
 import HomeScene from "@/components/scenes/home-scene"
 import StoreScene from "@/components/scenes/store-scene"
-import { useGameContext } from "@/components/game-context"
 import { Suspense, useState, useEffect, Component } from "react"
 import { KeyboardControls } from '@react-three/drei'
 

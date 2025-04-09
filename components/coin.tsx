@@ -6,7 +6,11 @@ import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
 
-export default function Coin({ position }: { position: [number, number, number] }) {
+interface CoinProps {
+  position: [number, number, number];
+}
+
+export default function Coin({ position }: CoinProps) {
   const coinRef = useRef<THREE.Group>(null)
   const [collected, setCollected] = useState(false)
   const { addCoins } = useGameContext()
@@ -47,7 +51,7 @@ export default function Coin({ position }: { position: [number, number, number] 
       
       coinRef.current.getWorldPosition(coinPos)
       playerMesh.getWorldPosition(playerPos)
-      
+            
       if (coinPos.distanceTo(playerPos) < 1.5 && !isCollecting.current) {
         isCollecting.current = true
         addCoins(1)
@@ -64,7 +68,7 @@ export default function Coin({ position }: { position: [number, number, number] 
       position={[position[0], position[1], position[2]]}
       dispose={null}
     >
-      <primitive object={model} scale={0.5} castShadow receiveShadow />
+      <primitive object={model} scale={0.1} castShadow receiveShadow />
     </group>
   )
 }
