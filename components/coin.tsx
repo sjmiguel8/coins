@@ -64,17 +64,22 @@ export default function Coin({ position }: CoinProps) {
       const playerPos = new THREE.Vector3()
       
       coinRef.current.getWorldPosition(coinPos)
-      if (playerMesh) {
-        playerMesh.getWorldPosition(playerPos)
-      }
-            
-      if (coinPos.distanceTo(playerPos) < 1.5 && !isCollecting.current) {
-        isCollecting.current = true
-        addCoins(1)
+      const distance = coinPos.distanceTo(playerPos)
+      if (distance < 1.5) {
+        // Emit event to collect the coin
+        window.dispatchEvent(new CustomEvent('coin-collected', {
+          detail: position
+        }))
         setCollected(true)
+        addCoins(1)
+        isCollecting.current = true
+        setTimeout(() => {
+          isCollecting.current = false
+        }, 1000) // Cooldown for collection
       }
     }
   })
+
 
   // Don't render until model is loaded
   if (collected || !model) return null

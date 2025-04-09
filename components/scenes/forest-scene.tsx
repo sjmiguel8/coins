@@ -130,7 +130,7 @@ export default function ForestScene() {
       <Player startPosition={[0, 1.5, 0]} />
 
       {/* Coins */}
-      {coinsRef.current && coinsRef.current.map((position, i) => (
+      {coinsRef.current.map((position, i) => (
         <Coin key={i} position={position} />
       ))}
 
