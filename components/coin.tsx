@@ -65,7 +65,7 @@ export default function Coin({ position }: CoinProps) {
       
       coinRef.current.getWorldPosition(coinPos)
       if (playerMesh) {
-        playerMesh.getWorldPosition(playerPos)
+        (playerMesh as THREE.Object3D).getWorldPosition(playerPos)
       }
       const distance = coinPos.distanceTo(playerPos)
       if (distance < 1.5 && !isCollecting.current) {
@@ -73,9 +73,6 @@ export default function Coin({ position }: CoinProps) {
         addCoins(1)
         setCollected(true)
         isCollecting.current = true
-        setTimeout(() => {
-          isCollecting.current = false
-        }, 1000) // Cooldown for collection
       }
     }
   })

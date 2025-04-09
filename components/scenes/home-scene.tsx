@@ -10,7 +10,7 @@ import NavigationSystem from "../NavigationSystem" // Add this
 import { Mesh, ShaderMaterial, DoubleSide } from 'three';
 
 export default function HomeScene() {
-  const { scene } = useThree()
+  const { scene, camera, controls } = useThree()
   
   // Load the sky castle model
   const { scene: skyCastleScene } = useGLTF('/skycastle.glb')
@@ -40,6 +40,7 @@ export default function HomeScene() {
       side: DoubleSide,
     });
   }, []);
+
   
   return (
     <>
@@ -64,7 +65,7 @@ export default function HomeScene() {
       {/* Visual ground model - no physics */}
       <primitive 
         object={skyCastleScene.clone()} 
-        position={[1, -10, 1]} // Adjust position
+        position={[1, -8, -1]}
         scale={[0.4, 0.4, 0.4]} // Adjust scale
         rotation={[0, Math.PI, 0]}
       />
@@ -72,7 +73,7 @@ export default function HomeScene() {
      
       
       {/* Player - position slightly higher to avoid clipping */}
-      <Player startPosition={[-8, 1.5, -16]} />
+      <Player startPosition={[4, 1.7, -19]} />
     </>
   )
 }
