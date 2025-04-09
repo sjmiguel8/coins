@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { useGameContext } from "./game-context";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { AnimationMixer } from 'three';
+import { Vector3 } from 'three'; // Add this line
 
 // Move these outside the component to prevent re-creation on every render
 const lastMovementDirection = new THREE.Vector3(0, 0, -1);
@@ -25,11 +26,17 @@ enum Controls {
   attack = "attack",
 }
 
-interface PlayerProps {
+export interface PlayerProps {
+  cameraLock: boolean;
+  position: Vector3 | number[];
+  onReady?: () => void;
   startPosition?: [number, number, number];
   cameraPosition?: [number, number, number];
   cameraTarget?: [number, number, number];
-  cameraLock: boolean; // Add cameraLock prop
+  userData?: any;
+  rotation?: [number, number, number]; // Add missing rotation prop
+  scale?: [number, number, number]; // Add missing scale prop
+  name?: string; // Add missing name prop
 }
 
 // Define a global event to handle navigation requests from outside components
@@ -55,7 +62,15 @@ interface GameContextType {
   eatMeat: (hungerPoints: number) => void;
 }
 
-export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [0, 7.5, 10], cameraTarget = [0, 1.5, 0], cameraLock }: PlayerProps) {
+export default function Player({ 
+  position, 
+  cameraLock = false,
+  startPosition = [0, 1.5, 0], 
+  cameraPosition = [0, 7.5, 10], 
+  cameraTarget = [0, 1.5, 0],
+  onReady,
+  userData = {}
+}: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
   const [, getKeys] = useKeyboardControls<Controls>(); // Move useKeyboardControls here
@@ -68,16 +83,6 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
   const [targetPosition, setTargetPosition] = useState<THREE.Vector3 | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   
-  // For virtual joystick controls
-  const [virtualControls, setVirtualControls] = useState({
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
-  });
-  const [useVirtualJoystick, setUseVirtualJoystick] = useState(true);
-  const [useClickToMove, setUseClickToMove] = useState(true);
-
   const [model, setModel] = useState<THREE.Group | null>(null);
   const [mixer, setMixer] = useState<AnimationMixer | null>(null);
 
@@ -149,30 +154,8 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
     // Create a custom event for navigation
     window.addEventListener('player-navigation', handleNavigation as EventListener);
     
-    // Create a custom event for virtual controls
-    const handleVirtualControls = (event: CustomEvent<any>) => {
-      setVirtualControls(event.detail);
-    };
-    window.addEventListener('virtual-joystick', handleVirtualControls as EventListener);
-    
-    // Listen for toggle controls event
-    const handleToggleControls = (event: CustomEvent<{ useVirtualJoystick: boolean, useClickToMove: boolean }>) => {
-      setUseVirtualJoystick(event.detail.useVirtualJoystick);
-      setUseClickToMove(event.detail.useClickToMove);
-    };
-    window.addEventListener('toggle-controls', handleToggleControls as EventListener);
-
-    // Listen for camera lock event
-    const handleCameraLock = (event: CustomEvent<{ cameraLock: boolean }>) => {
-      // setCameraLock(event.detail.cameraLock);
-    };
-    window.addEventListener('toggle-camera-lock', handleCameraLock as EventListener);
-
     return () => {
       window.removeEventListener('player-navigation', handleNavigation as EventListener);
-      window.removeEventListener('virtual-joystick', handleVirtualControls as EventListener);
-      window.removeEventListener('toggle-controls', handleToggleControls as EventListener);
-      window.removeEventListener('toggle-camera-lock', handleCameraLock as EventListener);
     };
   }, []);
 
@@ -205,7 +188,7 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
         });
 
         // Position the model correctly
-        loadedModel.position.set(0, -1, 0); // Adjust this if needed
+        loadedModel.position.set(0, -3, 0); // Adjust this if needed
         loadedModel.rotation.set(0, Math.PI, 0); // Face forward
         
         setModel(loadedModel);
@@ -230,12 +213,18 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
   // Position reset and camera setup effect
   useEffect(() => {
     if (playerRef.current && camera) {
+      const pos = Array.isArray(position)
+        ? { x: position[0], y: position[1], z: position[2] }
+        : { x: position.x, y: position.y, z: position.z };
+
       playerRef.current.setTranslation(
-        { x: startPosition[0], y: startPosition[1], z: startPosition[2] },
+        { x: pos.x, y: pos.y, z: pos.z },
         true
       );
       playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       playerRef.current.wakeUp();
+
+      if (onReady) onReady();
     }
 
     if (camera && controls) {
@@ -243,7 +232,7 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
       controls.target.set(cameraTarget[0], cameraTarget[1], cameraTarget[2]);
       controls.update();
     }
-  }, [camera, controls, startPosition]);
+  }, [camera, controls, position, onReady]);
 
   // Camera rotation effect
   useEffect(() => {
@@ -296,7 +285,7 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
     const sidewaysVector = new THREE.Vector3(1, 0, 0);
 
     // Handle click-to-move navigation
-    if (useClickToMove && isNavigating && targetPosition) {
+    if (isNavigating && targetPosition) {
       const playerPos = new THREE.Vector3(position.x, position.y, position.z);
       const distanceToTarget = playerPos.distanceTo(targetPosition);
       
@@ -325,22 +314,22 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
     // Handle keyboard and virtual controls
     else {
       // Apply movement based on key presses or virtual controls
-      if (keys.forward || (useVirtualJoystick && virtualControls.forward)) {
+      if (keys.forward) {
         targetVelocity.x += forwardVector.x * moveSpeed;
         targetVelocity.z += forwardVector.z * moveSpeed;
         movementDirection.z -= 1;
       }
-      if (keys.backward || (useVirtualJoystick && virtualControls.backward)) {
+      if (keys.backward) {
         targetVelocity.x -= forwardVector.x * moveSpeed;
         targetVelocity.z -= forwardVector.z * moveSpeed;
         movementDirection.z += 1;
       }
-      if (keys.left || (useVirtualJoystick && virtualControls.left)) {
+      if (keys.left) {
         targetVelocity.x -= sidewaysVector.x * moveSpeed;
         targetVelocity.z -= sidewaysVector.z * moveSpeed;
         movementDirection.x -= 1;
       }
-      if (keys.right || (useVirtualJoystick && virtualControls.right)) {
+      if (keys.right) {
         targetVelocity.x += sidewaysVector.x * moveSpeed;
         targetVelocity.z += sidewaysVector.z * moveSpeed;
         movementDirection.x += 1;
@@ -348,8 +337,8 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
     }
 
     // Normalize diagonal movement
-    if ((keys.forward || keys.backward || (useVirtualJoystick && virtualControls.forward) || (useVirtualJoystick && virtualControls.backward)) && 
-        (keys.left || keys.right || (useVirtualJoystick && virtualControls.left) || (useVirtualJoystick && virtualControls.right))) {
+    if ((keys.forward || keys.backward) && 
+        (keys.left || keys.right)) {
       const length = Math.sqrt(targetVelocity.x ** 2 + targetVelocity.z ** 2);
       if (length > 0) {
         targetVelocity.x = (targetVelocity.x / length) * moveSpeed;
@@ -529,7 +518,11 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
     <RigidBody
       ref={playerRef}
       colliders={false}
-      position={startPosition}
+      position={
+        Array.isArray(position)
+          ? (position as [number, number, number])
+          : (position as Vector3)
+      }
       friction={0.2}
       linearDamping={4}
       angularDamping={5}
@@ -538,6 +531,7 @@ export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [
       mass={1}
       restitution={0.1}
       gravityScale={1.5}
+      userData={userData}
     >
       <group ref={playerGroupRef}>
         <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />

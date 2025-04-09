@@ -10,7 +10,7 @@ import Menu from '../components/Menu'
 import HUD from '../components/hud'
 import MobileControls from '../components/MobileControls' // Add this line
 import { Canvas } from '@react-three/fiber'
-import { Physics } from '@react-three/rapier'
+import { Physics } from '@react-three/rapier' // Change this import
 import ForestScene from "@/components/scenes/forest-scene"
 import HomeScene from "@/components/scenes/home-scene"
 import StoreScene from "@/components/scenes/store-scene"
@@ -158,7 +158,7 @@ export default function App() {
               <ErrorBoundary fallback={<ErrorFallback />}>
                 <Canvas shadows>
                   <Suspense fallback={null}>
-                    <Physics gravity={[0, -30, 0]} timeStep={1/60} interpolate={true}>
+                    <Physics gravity={[0, -30, 0]}>
                       <SceneSelector />
                     </Physics>
                   </Suspense>

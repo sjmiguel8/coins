@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react"
 import { useThree } from "@react-three/fiber"
 import { RigidBody } from "@react-three/rapier"
 import { useGLTF, PerspectiveCamera } from "@react-three/drei"
-import Player from "../player"
+import Player, { PlayerProps } from "../player"
 import Coin from "../coin"
 import Creature from "../creature"
 import * as THREE from "three"
@@ -63,6 +63,15 @@ export default function ForestScene() {
     return positions;
   }, []);[]
 
+  // Define player props correctly
+  const playerProps: PlayerProps = {
+    position: [0, 1.5, 0],
+    cameraLock: false,
+    userData: { isPlayer: true },
+    onReady: () => {
+      console.log("Player is ready");
+    },
+  };
 
   return (
     <>
@@ -104,8 +113,8 @@ export default function ForestScene() {
         )
       })}
 
-      {/* Player - position slightly higher to avoid clipping */}
-      <Player startPosition={[0, 1.5, 0]} cameraLock={false} />
+      {/* Player component */}
+      <Player {...playerProps} />
 
       {/* Coins */}
       {coinPositions.map((position, i) => (

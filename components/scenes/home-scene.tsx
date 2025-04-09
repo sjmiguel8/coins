@@ -4,79 +4,102 @@ import { useEffect, useMemo } from "react"
 import { useThree } from "@react-three/fiber"
 import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
-import Player from "../player"
+import Player, { type PlayerProps } from "../player"
 import * as THREE from "three"
 import NavigationSystem from "../NavigationSystem" // Add this
-import { Mesh, ShaderMaterial, DoubleSide } from 'three';
+import { Mesh, ShaderMaterial, DoubleSide, Vector3 } from 'three';
+
+interface GroundProps {
+  [key: string]: any;
+}
+
+const Ground: React.FC<GroundProps> = (props) => {
+  return (
+    <RigidBody type="fixed" rotation={[-Math.PI / 2, 0, 0]} {...props}>
+      <mesh receiveShadow>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial transparent opacity={0} />
+      </mesh>
+    </RigidBody>
+  )
+}
 
 export default function HomeScene() {
-  const { scene, camera, controls } = useThree()
-  
-  // Load the sky castle model
-  const { scene: skyCastleScene } = useGLTF('/skycastle.glb')
+  // This component is responsible for rendering the home scene
+  const { scene, camera, controls } = useThree() 
 
+  // Define player props correctly
+  const playerProps: PlayerProps = {
+    position: [4, 1.5, -12],
+    cameraLock: false,
+    userData: { isPlayer: true },
+    onReady: () => {
+      console.log("Player is ready");
+    }
+  }
+    
+  // Load the sky castle model
+  const { scene: skyCastleScene } = useGLTF('/camping_buscraft_ambience.glb')
+  
+  useEffect(() => {
+    // Set the background color
+    scene.background = new THREE.Color("#222233");
+  }, [scene])
+  
   const groundMaterial = useMemo(() => {
-    return new ShaderMaterial({
+    const textureLoader = new THREE.TextureLoader();
+    const gradient = textureLoader.load('/gradient.png');
+    gradient.wrapS = gradient.wrapT = THREE.RepeatWrapping;
+    gradient.repeat.set(10, 10);
+    
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        gradient: { value: gradient },
+      },
       vertexShader: `
-        varying vec3 vPosition;
+        varying vec2 vUv;
         void main() {
-          vPosition = position;
+          vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
-        varying vec3 vPosition;
+        varying vec2 vUv;
+        uniform sampler2D gradient;
         void main() {
-          vec3 color1 = vec3(0.2, 0.2, 0.5); // Dark blue
-          vec3 color2 = vec3(0.5, 0.5, 0.8); // Light blue
-          vec3 color = mix(color1, color2, vPosition.y / 20.0 + 0.5);
-          gl_FragColor = vec4(color, 1.0);
+          vec4 color = texture2D(gradient, vUv);
+          gl_FragColor = color;
         }
       `,
       side: DoubleSide,
     });
+    return material;
   }, []);
 
-  
+  useGLTF.preload("/camping_buscraft_ambience.glb");
+
   return (
     <>
-      <NavigationSystem /> {/* Add this line */}
+      <NavigationSystem />
       <fog attach="fog" args={["#222233", 30, 50]} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[10, 10, 10]} intensity={1} castShadow />
 
       {/* Ground plane for physics */}
-      <RigidBody type="fixed" friction={1} restitution={0}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]} userData={{ isGround: true }}> {/* Add this for click detection */}
-          <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial transparent opacity={0} />
-        </mesh>
-      </RigidBody>
-      
-      {/* Gradient Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.5, 0]} material={groundMaterial}>
-        <planeGeometry args={[100, 100]} />
-      </mesh>
+      <Ground />
 
       {/* Visual ground model - no physics */}
-      <primitive 
-        object={skyCastleScene.clone()} 
-        position={[1, -10, -1]}
-        scale={[0.4, 0.4, 0.4]} // Adjust scale
+      <primitive  
+        object={skyCastleScene.clone()}
+        position={[1, 0, -1]}
+        scale={[1.2, 1.2, 1.2]}
         rotation={[0, Math.PI, 0]}
+        userData={{ isGround: true }} // Add this for click detection
       />
-
-     
       
-      {/* Player - position slightly higher to avoid clipping */}
-      <Player 
-        startPosition={[4, 1.5, -12]}
-        cameraPosition={[4, 7.5, -2]}
-        cameraTarget={[4, 1.5, -12]}
-        cameraLock={false}
-      />
+      {/* Player component */}
+      <Player {...playerProps} />
     </>
   )
 }
 
-useGLTF.preload('/skycastle.glb')
