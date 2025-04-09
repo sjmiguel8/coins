@@ -9,10 +9,10 @@ export default function CameraControls() {
   const controlsRef = useRef<OrbitControls>(null);
 
   useEffect(() => {
-    const controls = controlsRef.current;
-    if (controls) {
-      controls.target.set(0, 1, 0);
-      controls.update();
+    if (controlsRef.current) {
+      // Set initial target
+      controlsRef.current.target.set(0, 1, 0);
+      controlsRef.current.update();
     }
   }, []);
 
