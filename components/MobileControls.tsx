@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 export default function MobileControls() {
   const [showControls, setShowControls] = useState(false);
+  const [useVirtualJoystick, setUseVirtualJoystick] = useState(false);
   const [pressed, setPressed] = useState({
     forward: false,
     backward: false,
@@ -11,24 +12,37 @@ export default function MobileControls() {
     right: false,
   });
   
+  // Listen for control toggle events
+  useEffect(() => {
+    const handleToggleControls = (event: CustomEvent<{ useVirtualJoystick: boolean, useClickToMove: boolean }>) => {
+      setUseVirtualJoystick(event.detail.useVirtualJoystick);
+      setShowControls(event.detail.useVirtualJoystick && isMobileDevice());
+    };
+    window.addEventListener('toggle-controls', handleToggleControls as EventListener);
+    
+    return () => {
+      window.removeEventListener('toggle-controls', handleToggleControls as EventListener);
+    };
+  }, []);
+  
+  const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+      || window.innerWidth <= 768;
+  };
+
   // Detect mobile devices
   useEffect(() => {
-    const isMobileDevice = () => {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-        || window.innerWidth <= 768;
-    };
-    
-    setShowControls(isMobileDevice());
+    setShowControls(isMobileDevice() && useVirtualJoystick);
     
     const handleResize = () => {
-      setShowControls(isMobileDevice());
+      setShowControls(isMobileDevice() && useVirtualJoystick);
     };
     
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [useVirtualJoystick]);
   
   // Helper to handle control press
   const handlePress = (control: 'forward' | 'backward' | 'left' | 'right', isPressed: boolean) => {

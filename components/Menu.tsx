@@ -7,8 +7,18 @@ export default function Menu() {
   const [isOpen, setIsOpen] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const { changeScene, currentScene } = useGameContext()
-  const [useVirtualJoystick, setUseVirtualJoystick] = useState(true);
-  const [useClickToMove, setUseClickToMove] = useState(false);
+  const [useVirtualJoystick, setUseVirtualJoystick] = useState(false);
+  const [useClickToMove, setUseClickToMove] = useState(true);
+
+  // Dispatch initial control settings when component mounts
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('toggle-controls', {
+      detail: {
+        useVirtualJoystick: false,
+        useClickToMove: true,
+      }
+    }));
+  }, []);
 
   // Handle fullscreen toggle
   const toggleFullScreen = () => {

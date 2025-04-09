@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
@@ -15,12 +15,26 @@ export default function Coin({ position }: CoinProps) {
   const [collected, setCollected] = useState(false)
   const { addCoins } = useGameContext()
   
-  // Load the coin model
+  // Load the coin model - moved to useEffect to ensure proper loading
   const { scene: originalScene } = useGLTF('/coin.glb')
-  const [model] = useState(() => originalScene.clone())
+  const [model, setModel] = useState<THREE.Group | null>(null)
   
   // Track collection status
   const isCollecting = useRef(false)
+  
+  // Ensure model is properly cloned and prepared
+  useEffect(() => {
+    const clonedScene = originalScene.clone()
+    setModel(clonedScene)
+    
+    // Make sure the model is visible
+    clonedScene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true
+        object.receiveShadow = true
+      }
+    })
+  }, [originalScene])
 
   useFrame((state, delta) => {
     if (collected || !coinRef.current) return
@@ -37,7 +51,7 @@ export default function Coin({ position }: CoinProps) {
     if (Math.floor(time * 10) % 5 !== 0 || isCollecting.current) return
     
     // Find player
-    let playerMesh: THREE.Object3D | null = null
+    let playerMesh: THREE.Object3D | undefined = undefined;
     
     state.scene.traverse((object: THREE.Object3D) => {
       if (object.userData && object.userData.isPlayer) {
@@ -45,12 +59,14 @@ export default function Coin({ position }: CoinProps) {
       }
     })
     
-    if (playerMesh && coinRef.current) { // Check if coinRef.current exists
+    if (playerMesh && coinRef.current) {
       const coinPos = new THREE.Vector3()
       const playerPos = new THREE.Vector3()
       
       coinRef.current.getWorldPosition(coinPos)
-      playerMesh.getWorldPosition(playerPos)
+      if (playerMesh) {
+        playerMesh.getWorldPosition(playerPos)
+      }
             
       if (coinPos.distanceTo(playerPos) < 1.5 && !isCollecting.current) {
         isCollecting.current = true
@@ -60,7 +76,8 @@ export default function Coin({ position }: CoinProps) {
     }
   })
 
-  if (collected) return null
+  // Don't render until model is loaded
+  if (collected || !model) return null
 
   return (
     <group

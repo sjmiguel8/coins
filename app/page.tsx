@@ -16,7 +16,6 @@ import HomeScene from "@/components/scenes/home-scene"
 import StoreScene from "@/components/scenes/store-scene"
 import { Suspense, useState, useEffect, Component } from "react"
 import { KeyboardControls } from '@react-three/drei'
-import VirtualJoystick from '../components/VirtualJoystick'; // Add this line
 import CameraControls from '../components/CameraControls'; // Add this line
 
 class ErrorBoundary extends Component<{children: React.ReactNode, fallback: React.ReactNode}> {
@@ -178,7 +177,6 @@ export default function App() {
             </div>
             <HUD />
             <MobileControls /> {/* Add this line */}
-            <VirtualJoystick /> {/* Add this line */}
             {/* Render shop UI outside the canvas when active */}
             {shopOpen && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50 pointer-events-auto">
