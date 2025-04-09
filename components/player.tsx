@@ -24,6 +24,12 @@ interface PlayerProps {
   startPosition?: [number, number, number];
 }
 
+// Define a global event to handle navigation requests from outside components
+export type NavigationEvent = {
+  targetPosition: THREE.Vector3;
+  enabled: boolean;
+}
+
 export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
@@ -35,18 +41,70 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const currentVelocity = useRef({ x: 0, y: 0, z: 0 });
   const isTransitioning = useRef(false);
 
+  // Navigation state for click-to-move
+  const [targetPosition, setTargetPosition] = useState<THREE.Vector3 | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  // For virtual joystick controls
+  const [virtualControls, setVirtualControls] = useState({
+    forward: false,
+    backward: false,
+    left: false,
+    right: false,
+  });
+
+  const [useVirtualJoystick, setUseVirtualJoystick] = useState(true);
+  const [useClickToMove, setUseClickToMove] = useState(false);
+
   // Load the phoenix bird model
   const [model, setModel] = useState<THREE.Group | null>(null);
   const [mixer, setMixer] = useState<AnimationMixer | null>(null);
 
+  // Listen for click-to-move events from the scene
+  useEffect(() => {
+    // Access any navigation events set on the window object
+    const handleNavigation = (event: CustomEvent<NavigationEvent>) => {
+      if (event.detail.enabled) {
+        setTargetPosition(event.detail.targetPosition);
+        setIsNavigating(true);
+      } else {
+        setTargetPosition(null);
+        setIsNavigating(false);
+      }
+    };
+    
+    // Create a custom event for navigation
+    window.addEventListener('player-navigation', handleNavigation as EventListener);
+    
+    // Create a custom event for virtual controls
+    const handleVirtualControls = (event: CustomEvent<any>) => {
+      setVirtualControls(event.detail);
+    };
+    window.addEventListener('virtual-joystick', handleVirtualControls as EventListener);
+    
+    // Listen for toggle controls event
+    const handleToggleControls = (event: CustomEvent<{ useVirtualJoystick: boolean, useClickToMove: boolean }>) => {
+      setUseVirtualJoystick(event.detail.useVirtualJoystick);
+      setUseClickToMove(event.detail.useClickToMove);
+    };
+    window.addEventListener('toggle-controls', handleToggleControls as EventListener);
+
+    return () => {
+      window.removeEventListener('player-navigation', handleNavigation as EventListener);
+      window.removeEventListener('virtual-joystick', handleVirtualControls as EventListener);
+      window.removeEventListener('toggle-controls', handleToggleControls as EventListener);
+    };
+  }, []);
+
+  // GLB model loading effect
   useEffect(() => {
     const loader = new GLTFLoader();
-    // Update the path to point directly to the GLB file
     const url = '/bob_the_builder_capoeira_rig_animation.glb';
 
     loader.load(
       url,
       (gltf) => {
+        // ...existing code...
         const loadedModel = gltf.scene;
 
         // Adjust the model to be visible
@@ -87,6 +145,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     );
   }, [scene]);
 
+  // Position reset and camera setup effect
   useEffect(() => {
     if (playerRef.current) {
       playerRef.current.setTranslation(
@@ -100,6 +159,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     camera.position.set(startPosition[0], startPosition[1] + 6, startPosition[2] + 10);
   }, [camera, startPosition]);
 
+  // Main game loop - handles movement, physics, animations
   useFrame((state, delta) => {
     if (!playerRef.current || !playerGroupRef.current || isTransitioning.current) return;
 
@@ -111,6 +171,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     const clampedDelta = Math.min(delta, 0.1);
     const keys = getKeys();
 
+    // Scene transitions
     if (keys.scene1 || keys.scene2 || keys.scene3) {
       isTransitioning.current = true;
 
@@ -123,6 +184,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       }, 100);
     }
 
+    // Reset if fallen off map
     const position = playerRef.current.translation();
     if (position.y < -10) {
       playerRef.current.setTranslation(
@@ -133,16 +195,17 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       return;
     }
 
+    // Base movement settings
     const moveSpeed = 5.0;
     const rigidBodyVelocity = playerRef.current.linvel();
     const targetVelocity = { x: 0, y: rigidBodyVelocity.y, z: 0 };
     const movementDirection = new THREE.Vector3(0, 0, 0);
 
-    // Get camera's quaternion
+    // Get camera's quaternion for direction-relative movement
     const cameraQuaternion = new THREE.Quaternion();
     camera.getWorldQuaternion(cameraQuaternion);
 
-    // Create a movement vector
+    // Create movement vectors
     const forwardVector = new THREE.Vector3(0, 0, -1);
     const sidewaysVector = new THREE.Vector3(1, 0, 0);
 
@@ -150,30 +213,61 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     forwardVector.applyQuaternion(cameraQuaternion);
     sidewaysVector.applyQuaternion(cameraQuaternion);
 
-    // Apply movement based on key presses
-    if (keys.forward) {
-      targetVelocity.x += forwardVector.x * moveSpeed;
-      targetVelocity.z += forwardVector.z * moveSpeed;
-      movementDirection.z -= 1;
-    }
-    if (keys.backward) {
-      targetVelocity.x -= forwardVector.x * moveSpeed;
-      targetVelocity.z -= forwardVector.z * moveSpeed;
-      movementDirection.z += 1;
-    }
-    if (keys.left) {
-      targetVelocity.x -= sidewaysVector.x * moveSpeed;
-      targetVelocity.z -= sidewaysVector.z * moveSpeed;
-      movementDirection.x -= 1;
-    }
-    if (keys.right) {
-      targetVelocity.x += sidewaysVector.x * moveSpeed;
-      targetVelocity.z += sidewaysVector.z * moveSpeed;
-      movementDirection.x += 1;
+    // Handle click-to-move navigation
+    if (useClickToMove && isNavigating && targetPosition) {
+      const playerPos = new THREE.Vector3(position.x, position.y, position.z);
+      const distanceToTarget = playerPos.distanceTo(targetPosition);
+      
+      // Reached destination or close enough
+      if (distanceToTarget < 1.0) {
+        setIsNavigating(false);
+        setTargetPosition(null);
+      } else {
+        // Calculate direction to target
+        const direction = new THREE.Vector3()
+          .subVectors(targetPosition, playerPos)
+          .normalize();
+        
+        // Project direction onto the horizontal plane (ignore y component)
+        direction.y = 0;
+        direction.normalize();
+        
+        // Apply movement
+        targetVelocity.x = direction.x * moveSpeed;
+        targetVelocity.z = direction.z * moveSpeed;
+        
+        // For rotation
+        movementDirection.copy(direction);
+      }
+    } 
+    // Handle keyboard and virtual controls
+    else {
+      // Apply movement based on key presses or virtual controls
+      if (keys.forward || (useVirtualJoystick && virtualControls.forward)) {
+        targetVelocity.x += forwardVector.x * moveSpeed;
+        targetVelocity.z += forwardVector.z * moveSpeed;
+        movementDirection.z -= 1;
+      }
+      if (keys.backward || (useVirtualJoystick && virtualControls.backward)) {
+        targetVelocity.x -= forwardVector.x * moveSpeed;
+        targetVelocity.z -= forwardVector.z * moveSpeed;
+        movementDirection.z += 1;
+      }
+      if (keys.left || (useVirtualJoystick && virtualControls.left)) {
+        targetVelocity.x -= sidewaysVector.x * moveSpeed;
+        targetVelocity.z -= sidewaysVector.z * moveSpeed;
+        movementDirection.x -= 1;
+      }
+      if (keys.right || (useVirtualJoystick && virtualControls.right)) {
+        targetVelocity.x += sidewaysVector.x * moveSpeed;
+        targetVelocity.z += sidewaysVector.z * moveSpeed;
+        movementDirection.x += 1;
+      }
     }
 
     // Normalize diagonal movement
-    if ((keys.forward || keys.backward) && (keys.left || keys.right)) {
+    if ((keys.forward || keys.backward || (useVirtualJoystick && virtualControls.forward) || (useVirtualJoystick && virtualControls.backward)) && 
+        (keys.left || keys.right || (useVirtualJoystick && virtualControls.left) || (useVirtualJoystick && virtualControls.right))) {
       const length = Math.sqrt(targetVelocity.x ** 2 + targetVelocity.z ** 2);
       if (length > 0) {
         targetVelocity.x = (targetVelocity.x / length) * moveSpeed;
@@ -181,6 +275,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       }
     }
 
+    // Smooth movement
     const smoothFactor = 10.0 * clampedDelta;
     currentVelocity.current.x = THREE.MathUtils.lerp(
       currentVelocity.current.x,
@@ -193,6 +288,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       smoothFactor
     );
 
+    // Apply velocity to rigid body
     try {
       playerRef.current.setLinvel(
         {
@@ -206,10 +302,12 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       console.warn("Could not set player velocity");
     }
 
+    // Handle rotation - update last movement direction if moving
     if (movementDirection.lengthSq() > 0.01) {
       lastMovementDirection.current.copy(movementDirection.normalize());
     }
 
+    // Rotate player model to face movement direction
     if (
       (Math.abs(currentVelocity.current.x) > 0.1 || Math.abs(currentVelocity.current.z) > 0.1) &&
       lastMovementDirection.current.lengthSq() > 0
@@ -227,6 +325,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       playerGroupRef.current.quaternion.slerp(targetQuaternion, rotationSpeed);
     }
 
+    // Handle jumping
     if (keys.jump) {
       const position = playerRef.current.translation();
       if (position.y < 1.1) {
@@ -241,6 +340,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       }
     }
 
+    // Update camera target to follow player
     const playerPosition = playerRef.current.translation();
     const cameraTarget = new THREE.Vector3(playerPosition.x, playerPosition.y + 1, playerPosition.z);
 
@@ -266,12 +366,11 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     >
       <group ref={playerGroupRef}>
         <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />
-        {/* Adjust scale and position of the model */}
         {model && (
           <primitive 
             object={model} 
-            scale={[1, 1, 1]}    // Increased scale to 2
-            position={[0, -0.5, 0]}   // Adjust position to align with collider
+            scale={[1, 1, 1]}
+            position={[0, -0.5, 0]}
             castShadow 
             receiveShadow 
             userData={{ isPlayer: true }} 

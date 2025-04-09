@@ -1,7 +1,14 @@
 "use client"
+declare global {
+  interface Window {
+    duckShopOpen?: boolean;
+    closeDuckShop?: () => void;
+  }
+}
 import { GameContextProvider as GameProvider, useGameContext } from "@/components/game-context"
 import Menu from '../components/Menu'
 import HUD from '../components/hud'
+import MobileControls from '../components/MobileControls' // Add this line
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import ForestScene from "@/components/scenes/forest-scene"
@@ -9,6 +16,7 @@ import HomeScene from "@/components/scenes/home-scene"
 import StoreScene from "@/components/scenes/store-scene"
 import { Suspense, useState, useEffect, Component } from "react"
 import { KeyboardControls } from '@react-three/drei'
+import VirtualJoystick from '../components/VirtualJoystick'; // Add this line
 
 class ErrorBoundary extends Component<{children: React.ReactNode, fallback: React.ReactNode}> {
   state = { hasError: false };
@@ -148,6 +156,8 @@ export default function App() {
               <Menu />
             </div>
             <HUD />
+            <MobileControls /> {/* Add this line */}
+            <VirtualJoystick /> {/* Add this line */}
             {/* Render shop UI outside the canvas when active */}
             {shopOpen && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50 pointer-events-auto">

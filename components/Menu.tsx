@@ -7,6 +7,8 @@ export default function Menu() {
   const [isOpen, setIsOpen] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const { changeScene, currentScene } = useGameContext()
+  const [useVirtualJoystick, setUseVirtualJoystick] = useState(true);
+  const [useClickToMove, setUseClickToMove] = useState(false);
 
   // Handle fullscreen toggle
   const toggleFullScreen = () => {
@@ -144,6 +146,46 @@ export default function Menu() {
           >
             Store
           </button>
+          
+          <h3 style={menuSectionTitleStyle}>Settings</h3>
+          <label style={{ display: 'block', marginBottom: '5px', color: 'white' }}>
+            <input
+              type="checkbox"
+              checked={useVirtualJoystick}
+              onChange={(e) => {
+                setUseVirtualJoystick(e.target.checked);
+                setUseClickToMove(!e.target.checked);
+                window.dispatchEvent(new CustomEvent('toggle-controls', {
+                  detail: {
+                    useVirtualJoystick: e.target.checked,
+                    useClickToMove: !e.target.checked,
+                  }
+                }));
+                setIsOpen(false);
+              }}
+              style={{ marginRight: '5px' }}
+            />
+            Virtual Joystick
+          </label>
+          <label style={{ display: 'block', marginBottom: '5px', color: 'white' }}>
+            <input
+              type="checkbox"
+              checked={useClickToMove}
+              onChange={(e) => {
+                setUseClickToMove(e.target.checked);
+                setUseVirtualJoystick(!e.target.checked);
+                window.dispatchEvent(new CustomEvent('toggle-controls', {
+                  detail: {
+                    useVirtualJoystick: !e.target.checked,
+                    useClickToMove: e.target.checked,
+                  }
+                }));
+                setIsOpen(false);
+              }}
+              style={{ marginRight: '5px' }}
+            />
+            Click to Move
+          </label>
           
           <h3 style={menuSectionTitleStyle}>Options</h3>
           <button 

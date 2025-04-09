@@ -7,6 +7,7 @@ import { useGLTF } from "@react-three/drei"
 import Player from "../player"
 import * as THREE from "three"
 import CameraControls from "../CameraControls" 
+import NavigationSystem from "../NavigationSystem" // Add this
 import { useGameContext } from "../game-context"
 
 // Create a new component for the shop UI that's rendered outside the canvas
@@ -52,13 +53,19 @@ export default function StoreScene() {
   return (
     <>
       <CameraControls />
+      <NavigationSystem /> {/* Add this line */}
       <fog attach="fog" args={["#97809d", 30, 50]} />
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 10, 10]} intensity={1} castShadow />
 
       {/* Ground plane for physics */}
       <RigidBody type="fixed" friction={1} restitution={0}>
-        <mesh rotation={[-Math.PI / 1, 0, 0]} receiveShadow position={[0, 0, 0]}>
+        <mesh 
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow 
+          position={[0, 0, 0]}
+          userData={{ isGround: true }} // Add this for click detection
+        >
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial transparent opacity={0} />
         </mesh>

@@ -9,6 +9,7 @@ import Coin from "../coin"
 import Creature from "../creature"
 import * as THREE from "three"
 import CameraControls from "../CameraControls"
+import NavigationSystem from "../NavigationSystem" // Add this
 import { MeshStandardMaterial, ShaderMaterial, DoubleSide } from 'three';
 
 export default function ForestScene() {
@@ -59,13 +60,14 @@ export default function ForestScene() {
   return (
     <>
       <CameraControls />
+      <NavigationSystem /> {/* Add this line */}
       <fog attach="fog" args={["#222233", 30, 50]} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[10, 10, 10]} intensity={1} castShadow />
 
       {/* Ground plane for physics */}
       <RigidBody type="fixed" friction={1} restitution={0}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]} userData={{ isGround: true }}> {/* Add this for click detection */}
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial transparent opacity={0} />
         </mesh>
