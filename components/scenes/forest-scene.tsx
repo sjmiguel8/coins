@@ -76,7 +76,7 @@ export default function ForestScene() {
       {/* Forest Ground Model */}
       <primitive
         object={forestGroundScene.clone()}
-        position={[0, -0.2, 0]} // Adjust ground position
+        position={[0, 3.6, 0]}
         scale={[1, 1, 0.8]}
         receiveShadow
       />

@@ -67,49 +67,14 @@ export default function HomeScene() {
       <primitive 
         object={skyCastleScene.clone()} 
         position={[1, -10, 1]} // Adjust position
-        scale={[0.4, 0.4, 0.4]} // Adjust scale to ensure proper rendering
+        scale={[0.4, 0.4, 0.4]} // Adjust scale
+        rotation={[0, Math.PI, 0]}
       />
 
-      {/* House (keep existing house) */}
-      <group position={[0, 0.5, -10]}>
-        {/* Main house structure */}
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[8, 4, 6]} />
-          <meshStandardMaterial color="#e8c59c" />
-        </mesh>
-        
-        {/* Roof */}
-        <mesh position={[0, 3, 0]} castShadow>
-          <coneGeometry args={[6, 3, 4]} />
-          <meshStandardMaterial color="#8d6e63" />
-        </mesh>
-        
-        {/* Door */}
-        <mesh position={[0, -0.5, 3.01]} castShadow>
-          <boxGeometry args={[1.5, 3, 0.1]} />
-          <meshStandardMaterial color="#5d4037" />
-        </mesh>
-        
-        {/* Windows */}
-        <mesh position={[-2.5, 0.5, 3.01]} castShadow>
-          <boxGeometry args={[1, 1, 0.1]} />
-          <meshStandardMaterial color="#b3e5fc" />
-        </mesh>
-        
-        <mesh position={[2.5, 0.5, 3.01]} castShadow>
-          <boxGeometry args={[1, 1, 0.1]} />
-          <meshStandardMaterial color="#b3e5fc" />
-        </mesh>
-        
-        {/* Chimney */}
-        <mesh position={[3, 3.5, -2]} castShadow>
-          <boxGeometry args={[1, 3, 1]} />
-          <meshStandardMaterial color="#8d6e63" />
-        </mesh>
-      </group>
+     
       
       {/* Player - position slightly higher to avoid clipping */}
-      <Player startPosition={[0, 1.5, 0]} />
+      <Player startPosition={[-8, 1.5, -16]} />
     </>
   )
 }

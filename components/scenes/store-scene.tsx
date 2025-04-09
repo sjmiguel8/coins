@@ -89,7 +89,7 @@ export default function StoreScene() {
       {/* Visual ground model - no physics */}
       <primitive 
         object={medievalCampScene.clone()} 
-        position={[0, -1, 0]} 
+        position={[0, 0.8, 0]} 
         scale={[5, 5, 5]} 
         rotation={[0, Math.PI, 0]} 
       />
