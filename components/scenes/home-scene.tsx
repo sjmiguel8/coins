@@ -65,7 +65,7 @@ export default function HomeScene() {
       {/* Visual ground model - no physics */}
       <primitive 
         object={skyCastleScene.clone()} 
-        position={[1, -8, -1]}
+        position={[1, -10, -1]}
         scale={[0.4, 0.4, 0.4]} // Adjust scale
         rotation={[0, Math.PI, 0]}
       />
@@ -73,7 +73,7 @@ export default function HomeScene() {
      
       
       {/* Player - position slightly higher to avoid clipping */}
-      <Player startPosition={[4, 1.7, -19]} />
+      <Player startPosition={[4, 1.5, -12]} />
     </>
   )
 }
