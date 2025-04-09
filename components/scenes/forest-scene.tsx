@@ -1,25 +1,25 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { useThree } from "@react-three/fiber"
 import { RigidBody } from "@react-three/rapier"
-import { useGLTF } from "@react-three/drei"
+import { useGLTF, PerspectiveCamera } from "@react-three/drei"
 import Player from "../player"
 import Coin from "../coin"
 import Creature from "../creature"
 import * as THREE from "three"
-import CameraControls from "../CameraControls" // Import CameraControls
+import CameraControls from "../CameraControls"
+import { MeshStandardMaterial, ShaderMaterial, DoubleSide } from 'three';
 
 export default function ForestScene() {
   const { scene } = useThree()
   const [coins, setCoins] = useState<[number, number, number][]>([])
-  
-  // Load forest ground model
-  const { scene: forestGroundScene } = useGLTF('/low_poly_forest.glb')
+
+  // Load decorative tree model
   const { scene: treeScene } = useGLTF('/decorative_tree.glb')
 
   useEffect(() => {
-    scene.background = new THREE.Color("#8bc34a")
+    scene.background = new THREE.Color("#222233")
 
     // Generate random coin positions
     const newCoins: [number, number, number][] = []
@@ -31,10 +31,33 @@ export default function ForestScene() {
     setCoins(newCoins)
   }, [scene])
 
+  const groundMaterial = useMemo(() => {
+    return new ShaderMaterial({
+      vertexShader: `
+        varying vec3 vPosition;
+        void main() {
+          vPosition = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vPosition;
+        void main() {
+          vec3 color1 = vec3(0.1, 0.3, 0.1); // Dark green
+          vec3 color2 = vec3(0.4, 0.7, 0.4); // Light green
+          vec3 color = mix(color1, color2, vPosition.y / 20.0 + 0.5);
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+      side: DoubleSide,
+    });
+  }, []);
+
   return (
     <>
-      <CameraControls /> {/* Add CameraControls here */}
-      <fog attach="fog" args={["#8bc34a", 30, 50]} />
+      <PerspectiveCamera makeDefault position={[0, 5, 10]} />
+      <CameraControls />
+      <fog attach="fog" args={["#222233", 30, 50]} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[10, 10, 10]} intensity={1} castShadow />
 
@@ -45,13 +68,11 @@ export default function ForestScene() {
           <meshStandardMaterial transparent opacity={0} />
         </mesh>
       </RigidBody>
-      
-      {/* Visual ground model - no physics */}
-      <primitive 
-        object={forestGroundScene.clone()} 
-        position={[0, -1, 0]} 
-        scale={[0.5, 0.5, 0.5]} // Adjust scale to ensure proper rendering
-      />
+
+      {/* Gradient Ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.5, 0]} material={groundMaterial}>
+        <planeGeometry args={[100, 100]} />
+      </mesh>
 
       {/* Trees - reduced number */}
       {Array.from({ length: 20 }).map((_, i) => {
@@ -61,9 +82,9 @@ export default function ForestScene() {
         const rotation = Math.random() * Math.PI * 2
 
         return (
-          <group 
-            key={i} 
-            position={[x, 0, z]} 
+          <group
+            key={i}
+            position={[x, 0, z]}
             scale={[scale, scale, scale]}
             rotation={[0, rotation, 0]}
           >
@@ -92,5 +113,5 @@ export default function ForestScene() {
   )
 }
 
-useGLTF.preload('/low_poly_forest.glb')
 useGLTF.preload('/decorative_tree.glb')
+
