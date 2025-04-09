@@ -39,7 +39,7 @@ export default function HomeScene() {
   }
     
   // Load the sky castle model
-  const { scene: skyCastleScene } = useGLTF('/camping_buscraft_ambience.glb')
+  const { scene: skyCastleScene } = useGLTF("/cozy-day/source/catsu2 sketchfab version light.glb")
   
   useEffect(() => {
     // Set the background color
@@ -76,7 +76,7 @@ export default function HomeScene() {
     return material;
   }, []);
 
-  useGLTF.preload("/camping_buscraft_ambience.glb");
+  useGLTF.preload("/cozy-day/source/catsu2 sketchfab version light.glb")
 
   return (
     <>
