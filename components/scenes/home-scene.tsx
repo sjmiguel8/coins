@@ -106,7 +106,7 @@ export default function HomeScene() {
         </mesh>
       </group>
       
-      {/* Player */}
+      {/* Player - position slightly higher to avoid clipping */}
       <Player startPosition={[0, 1.5, 0]} />
     </>
   )

@@ -56,7 +56,6 @@ export default function ForestScene() {
 
   return (
     <>
-      {/*<PerspectiveCamera makeDefault position={[0, 5, 10]} />*/}
       <CameraControls />
       <fog attach="fog" args={["#222233", 30, 50]} />
       <ambientLight intensity={0.8} />
@@ -97,8 +96,8 @@ export default function ForestScene() {
         )
       })}
 
-      {/* Player */}
-      <Player startPosition={[0, 1.3, 0]} /> // Adjust player start position
+      {/* Player - position slightly higher to avoid clipping */}
+      <Player startPosition={[0, 1.5, 0]} />
 
       {/* Coins */}
       {coins.map((position, i) => (
@@ -113,13 +112,9 @@ export default function ForestScene() {
         const z = Math.sin(angle) * radius
         return <Creature key={i} position={[x, 0.5, z]} />
       })}
-    </> // Changed to the low poly forest
+    </>
   )
 }
-
-
-
-
 
 useGLTF.preload('/decorative_tree.glb')
 useGLTF.preload('/low_poly_forest.glb') // Changed to the low poly forest

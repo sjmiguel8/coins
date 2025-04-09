@@ -28,7 +28,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null)
   const playerGroupRef = useRef<THREE.Group>(null)
   const [, getKeys] = useKeyboardControls<Controls>()
-  const { camera } = useThree()
+  const { camera, gl, scene, controls } = useThree()
   const { changeScene } = useGameContext()
   
   // Store the last movement direction for smooth rotation
@@ -40,7 +40,6 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   // Prevent key input processing during scene transitions
   const isTransitioning = useRef(false)
 
-  // Set up camera to follow player and start player in a safe position above ground
   useEffect(() => {
     // Position player safely above the ground
     if (playerRef.current) {
@@ -55,8 +54,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     }
 
     // Position camera
-    camera.position.set(startPosition[0], startPosition[1] + 3, startPosition[2] + 5)
-    camera.lookAt(startPosition[0], startPosition[1], startPosition[2])
+    camera.position.set(startPosition[0], startPosition[1] + 6, startPosition[2] + 10);
   }, [camera, startPosition])
 
   useFrame((state, delta) => {
@@ -197,21 +195,16 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       }
     }
 
-    // Calculate camera position with smooth follow
-    const cameraPosition = new THREE.Vector3()
-    cameraPosition.copy(position)
-    cameraPosition.z += 5
-    cameraPosition.y += 3
+    // Get current player position
+    const playerPosition = playerRef.current.translation();
     
-    // Camera look target
-    const cameraTarget = new THREE.Vector3()
-    cameraTarget.copy(position)
-    cameraTarget.y += 0.25
+    // Calculate camera target position - always pointing at the player
+    const cameraTarget = new THREE.Vector3(playerPosition.x, playerPosition.y + 1, playerPosition.z);
     
-    // Smooth camera movement
-    const cameraSmoothFactor = 3 * clampedDelta
-    state.camera.position.lerp(cameraPosition, cameraSmoothFactor)
-    state.camera.lookAt(cameraTarget)
+    // Update orbit controls target - smooth follow
+    if (state.controls) {
+      state.controls.target.copy(cameraTarget);
+    }
   })
 
   return (

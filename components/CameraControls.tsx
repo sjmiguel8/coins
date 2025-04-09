@@ -2,17 +2,35 @@
 
 import { OrbitControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function CameraControls() {
   const { camera, gl } = useThree();
+  const controlsRef = useRef<OrbitControls>(null);
 
   useEffect(() => {
-    // Ensure OrbitControls updates correctly in a React environment
-    camera.lookAt(0, 0, 0); // Set initial look at point
-  }, [camera]);
+    const controls = controlsRef.current;
+    if (controls) {
+      controls.target.set(0, 1, 0);
+      controls.update();
+    }
+  }, []);
 
   return (
-    <OrbitControls enableDamping makeDefault domElement={gl.domElement} />
+    <OrbitControls
+      ref={controlsRef}
+      enableDamping
+      dampingFactor={0.05}
+      makeDefault
+      domElement={gl.domElement}
+      minAzimuthAngle={-Infinity}
+      maxAzimuthAngle={Infinity}
+      minPolarAngle={Math.PI * 0.1}
+      maxPolarAngle={Math.PI * 0.9}
+      enablePan={false}
+      enableZoom={true}
+      minDistance={3}
+      maxDistance={20}
+    />
   );
 }
