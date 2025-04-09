@@ -2,29 +2,28 @@
 
 import { useRef, useState } from "react"
 import { useFrame } from "@react-three/fiber"
+import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
 
 export default function Coin({ position }: { position: [number, number, number] }) {
-  const coinRef = useRef<THREE.Mesh>(null)
+  const coinRef = useRef<THREE.Group>(null)
   const [collected, setCollected] = useState(false)
   const { addCoins } = useGameContext()
   
+  // Load the GLB coin model
+  const { scene } = useGLTF('/coin.glb')
+  // Create a clone of the model to avoid sharing instances
+  const modelRef = useRef(scene.clone())
+  
   // Track if we're already processing collection to prevent multiple triggers
   const isProcessing = useRef(false)
-  
-  // Use a simple position object for hover effect
-  const coinPosition = useRef({
-    x: position[0],
-    y: position[1],
-    z: position[2]
-  })
 
   useFrame((state, delta) => {
     if (collected || isProcessing.current || !coinRef.current) return
 
-    // Simple coin rotation - only rotate the coin itself
-    coinRef.current.rotation.y += delta * 2
+    // Rotate coin
+    coinRef.current.rotation.y += delta * 3
     
     // Simple hover effect with sin wave
     const time = state.clock.getElapsedTime()
@@ -34,15 +33,13 @@ export default function Coin({ position }: { position: [number, number, number] 
     coinRef.current.position.set(position[0], hoverY, position[2])
     
     // Find player in scene - very simple check
-    let playerMesh = null
-    let playerFound = false
+    let playerMesh: THREE.Object3D | null = null
     
     // Only do this check once every 10 frames to improve performance
-    if (Math.floor(state.clock.getElapsedTime() * 60) % 10 === 0 && !playerFound) {
+    if (Math.floor(state.clock.getElapsedTime() * 60) % 10 === 0) {
       state.scene.traverse((object) => {
         if (object.userData && object.userData.isPlayer) {
           playerMesh = object
-          playerFound = true
         }
       })
     }
@@ -50,7 +47,9 @@ export default function Coin({ position }: { position: [number, number, number] 
     // Check player proximity only if we found a player
     if (playerMesh && !isProcessing.current) {
       const coinWorldPos = new THREE.Vector3()
-      coinRef.current.getWorldPosition(coinWorldPos)
+      // Fix TypeScript error - explicitly cast to Object3D 
+      const coinObject = coinRef.current as THREE.Object3D
+      coinObject.getWorldPosition(coinWorldPos)
       
       const playerWorldPos = new THREE.Vector3()
       playerMesh.getWorldPosition(playerWorldPos)
@@ -64,7 +63,7 @@ export default function Coin({ position }: { position: [number, number, number] 
         // Add coin to counter
         addCoins(1)
         
-        // Mark as collected without any animation
+        // Mark as collected
         setCollected(true)
       }
     }
@@ -74,14 +73,16 @@ export default function Coin({ position }: { position: [number, number, number] 
   if (collected) return null
 
   return (
-    <mesh
+    <group
       ref={coinRef}
       position={[position[0], position[1], position[2]]}
-      rotation={[Math.PI/2, 0, 0]} // Make coin stand upright
-      castShadow
+      scale={[0.2, 0.2, 0.2]} // Reduce scale from 0.5 to 0.2 to make coins much smaller
     >
-      <cylinderGeometry args={[0.5, 0.5, 0.1, 32]} />
-      <meshStandardMaterial color="#ffd700" metalness={0.8} roughness={0.2} />
-    </mesh>
+      {/* Use the loaded coin GLB model */}
+      <primitive object={modelRef.current} />
+    </group>
   )
 }
+
+// Preload the model to improve performance
+useGLTF.preload('/coin.glb')

@@ -36,8 +36,17 @@ export default function Player() {
   // Prevent key input processing during scene transitions
   const isTransitioning = useRef(false)
 
-  // Set up camera to follow player
+  // Set up camera to follow player and start player in a safe position above ground
   useEffect(() => {
+    // Position player safely above the ground to prevent falling through
+    if (playerRef.current) {
+      // Start at a higher position to ensure player doesn't fall through ground
+      playerRef.current.setTranslation({ x: 0, y: 1.5, z: 0 }, true)
+      playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true) // Reset velocity
+      playerRef.current.wakeUp() // Ensure physics are active
+    }
+
+    // Position camera
     camera.position.set(0, 3, 5)
     camera.lookAt(0, 0, 0)
   }, [camera])
@@ -62,6 +71,14 @@ export default function Player() {
       setTimeout(() => {
         isTransitioning.current = false
       }, 100)
+    }
+
+    // Fall protection - if player falls below a certain threshold, reset position
+    const position = playerRef.current.translation()
+    if (position.y < -10) {
+      playerRef.current.setTranslation({ x: 0, y: 5, z: 0 }, true)
+      playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      return;
     }
 
     // FIXED MOVEMENT: Use more refined velocity control for smoother movement
@@ -168,9 +185,6 @@ export default function Player() {
       }
     }
 
-    // Camera follow with smoothing
-    const position = playerRef.current.translation()
-    
     // Calculate camera position with smooth follow
     const cameraPosition = new THREE.Vector3()
     cameraPosition.copy(position)
@@ -192,16 +206,18 @@ export default function Player() {
     <RigidBody
       ref={playerRef}
       colliders={false}
-      position={[0, 1, 0]}
+      position={[0, 1.5, 0]} // Start higher above ground to prevent falling through
       friction={0.2}
       linearDamping={4} 
       angularDamping={5}
       lockRotations
       type="dynamic"
       mass={1}
+      restitution={0.1} // Add small restitution to help with bouncing
+      gravityScale={1.5} // Increase gravity slightly for better grounding
     >
       <group ref={playerGroupRef}>
-        <CapsuleCollider args={[0.5, 0.5]} />
+        <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />
         <mesh castShadow userData={{ isPlayer: true }}>
           <capsuleGeometry args={[0.5, 1, 4, 8]} />
           <meshStandardMaterial color="#ff8800" />
