@@ -79,23 +79,41 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     const targetVelocity = { x: 0, y: rigidBodyVelocity.y, z: 0 };
     const movementDirection = new THREE.Vector3(0, 0, 0);
 
+    // Get camera's quaternion
+    const cameraQuaternion = new THREE.Quaternion();
+    camera.getWorldQuaternion(cameraQuaternion);
+
+    // Create a movement vector
+    const forwardVector = new THREE.Vector3(0, 0, -1);
+    const sidewaysVector = new THREE.Vector3(1, 0, 0);
+
+    // Rotate the movement vector by the camera's quaternion
+    forwardVector.applyQuaternion(cameraQuaternion);
+    sidewaysVector.applyQuaternion(cameraQuaternion);
+
+    // Apply movement based on key presses
     if (keys.forward) {
-      targetVelocity.z = -moveSpeed;
+      targetVelocity.x += forwardVector.x * moveSpeed;
+      targetVelocity.z += forwardVector.z * moveSpeed;
       movementDirection.z -= 1;
     }
     if (keys.backward) {
-      targetVelocity.z = moveSpeed;
+      targetVelocity.x -= forwardVector.x * moveSpeed;
+      targetVelocity.z -= forwardVector.z * moveSpeed;
       movementDirection.z += 1;
     }
     if (keys.left) {
-      targetVelocity.x = -moveSpeed;
+      targetVelocity.x -= sidewaysVector.x * moveSpeed;
+      targetVelocity.z -= sidewaysVector.z * moveSpeed;
       movementDirection.x -= 1;
     }
     if (keys.right) {
-      targetVelocity.x = moveSpeed;
+      targetVelocity.x += sidewaysVector.x * moveSpeed;
+      targetVelocity.z += sidewaysVector.z * moveSpeed;
       movementDirection.x += 1;
     }
 
+    // Normalize diagonal movement
     if ((keys.forward || keys.backward) && (keys.left || keys.right)) {
       const length = Math.sqrt(targetVelocity.x ** 2 + targetVelocity.z ** 2);
       if (length > 0) {

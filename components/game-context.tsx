@@ -1,58 +1,50 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react"
-
-type GameScene = "forest" | "home" | "store"
+import React, { createContext, useContext, useState } from 'react';
 
 interface GameContextType {
-  coins: number
-  addCoins: (amount: number) => void
-  currentScene: GameScene
-  changeScene: (scene: GameScene) => void
-  inventory: string[]
-  addToInventory: (item: string) => void
+  coins: number;
+  addCoins: (amount: number) => void;
+  currentScene: string;
+  changeScene: (scene: string) => void;
 }
 
-const GameContext = createContext<GameContextType | undefined>(undefined)
+const GameContext = createContext<GameContextType | undefined>(undefined);
 
-export function GameProvider({ children }: { children: ReactNode }) {
-  const [coins, setCoins] = useState(0)
-  const [currentScene, setCurrentScene] = useState<GameScene>("forest")
-  const [inventory, setInventory] = useState<string[]>([])
+export const useGameContext = () => {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error("useGameContext must be used within a GameContextProvider");
+  }
+  return context;
+};
+
+interface GameContextProviderProps {
+  children: React.ReactNode;
+}
+
+export const GameContextProvider: React.FC<GameContextProviderProps> = ({ children }) => {
+  const [coins, setCoins] = useState(0);
+  const [currentScene, setCurrentScene] = useState("home");
 
   const addCoins = (amount: number) => {
-    setCoins((prev) => prev + amount)
-  }
+    setCoins((prevCoins) => prevCoins + amount);
+  };
 
-  const changeScene = (scene: GameScene) => {
-    setCurrentScene(scene)
-    console.log(`Changing scene to: ${scene}`)
-  }
+  const changeScene = (scene: string) => {
+    setCurrentScene(scene);
+  };
 
-  const addToInventory = (item: string) => {
-    setInventory((prev) => [...prev, item])
-  }
+  const value: GameContextType = {
+    coins,
+    addCoins,
+    currentScene,
+    changeScene,
+  };
 
   return (
-    <GameContext.Provider
-      value={{
-        coins,
-        addCoins,
-        currentScene,
-        changeScene,
-        inventory,
-        addToInventory,
-      }}
-    >
+    <GameContext.Provider value={value}>
       {children}
     </GameContext.Provider>
-  )
-}
-
-export function useGameContext() {
-  const context = useContext(GameContext)
-  if (context === undefined) {
-    throw new Error("useGameContext must be used within a GameProvider")
-  }
-  return context
-}
+  );
+};

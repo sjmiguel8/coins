@@ -62,10 +62,9 @@ export default function Coin({ position }: { position: [number, number, number] 
     <group
       ref={coinRef}
       position={[position[0], position[1], position[2]]}
-      scale={[0.05, 0.05, 0.05]} 
-      rotation={[0, Math.random() * Math.PI * 2, 0]}
+      dispose={null}
     >
-      <primitive object={model} />
+      <primitive object={model} scale={0.5} castShadow receiveShadow />
     </group>
   )
 }
