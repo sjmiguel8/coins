@@ -13,7 +13,8 @@ import { MeshStandardMaterial, ShaderMaterial, DoubleSide } from 'three';
 
 export default function ForestScene() {
   const { scene } = useThree()
-  const [coins, setCoins] = useState<[number, number, number][]>([])
+  // Use useRef to store coin positions and initialize it
+  const coinsRef = useRef<[number, number, number][]>([])
 
   // Load forest ground model
   const { scene: forestGroundScene } = useGLTF('/low_poly_forest.glb') // Changed to the low poly forest
@@ -29,8 +30,9 @@ export default function ForestScene() {
       const z = (Math.random() - 0.5) * 40
       newCoins.push([x, 1, z])
     }
-    setCoins(newCoins)
-  }, [scene])
+    // Assign new coins to the ref
+    coinsRef.current = newCoins
+  }, []) // Empty dependency array to run only once
 
   const groundMaterial = useMemo(() => {
     return new ShaderMaterial({
@@ -100,7 +102,7 @@ export default function ForestScene() {
       <Player startPosition={[0, 1.5, 0]} />
 
       {/* Coins */}
-      {coins.map((position, i) => (
+      {coinsRef.current.map((position, i) => (
         <Coin key={i} position={position} />
       ))}
 

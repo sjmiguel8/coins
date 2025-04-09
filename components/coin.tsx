@@ -67,6 +67,7 @@ export default function Coin({ position }: CoinProps) {
       ref={coinRef}
       position={[position[0], position[1], position[2]]}
       dispose={null}
+      userData={{ isCoin: true }}
     >
       <primitive object={model} scale={0.1} castShadow receiveShadow />
     </group>

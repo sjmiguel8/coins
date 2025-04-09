@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls, useGLTF } from "@react-three/drei";
 import { RigidBody, CapsuleCollider, type RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import { useGameContext } from "./game-context";
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { AnimationMixer } from 'three';
 
 enum Controls {
   forward = "forward",
@@ -26,12 +28,64 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
   const [, getKeys] = useKeyboardControls<Controls>();
-  const { camera, controls } = useThree();
+  const { camera, controls, scene } = useThree();
   const { changeScene } = useGameContext();
 
   const lastMovementDirection = useRef(new THREE.Vector3(0, 0, -1));
   const currentVelocity = useRef({ x: 0, y: 0, z: 0 });
   const isTransitioning = useRef(false);
+
+  // Load the phoenix bird model
+  const [model, setModel] = useState<THREE.Group | null>(null);
+  const [mixer, setMixer] = useState<AnimationMixer | null>(null);
+
+  useEffect(() => {
+    const loader = new GLTFLoader();
+    // Update the path to point directly to the GLB file
+    const url = '/bob_the_builder_capoeira_rig_animation.glb';
+
+    loader.load(
+      url,
+      (gltf) => {
+        const loadedModel = gltf.scene;
+
+        // Adjust the model to be visible
+        loadedModel.traverse((node: any) => {
+          if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+          }
+        });
+
+        // Position the model correctly
+        loadedModel.position.set(0, -1, 0); // Adjust this if needed
+        loadedModel.rotation.set(0, Math.PI, 0); // Face forward
+        
+        setModel(loadedModel);
+
+        // Create and play animations
+        const newMixer = new AnimationMixer(loadedModel);
+        setMixer(newMixer);
+
+        // Log animations for debugging
+        console.log('Available animations:', gltf.animations);
+
+        if (gltf.animations.length > 0) {
+          // Play the first animation by default
+          const action = newMixer.clipAction(gltf.animations[0]);
+          action.play();
+        }
+
+        console.log('Model loaded!', gltf);
+      },
+      (xhr) => {
+        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+      },
+      (error) => {
+        console.error('An error happened loading the GLTF:', error);
+      }
+    );
+  }, [scene]);
 
   useEffect(() => {
     if (playerRef.current) {
@@ -48,6 +102,11 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
 
   useFrame((state, delta) => {
     if (!playerRef.current || !playerGroupRef.current || isTransitioning.current) return;
+
+    // Update the animation mixer each frame
+    if (mixer) {
+      mixer.update(delta);
+    }
 
     const clampedDelta = Math.min(delta, 0.1);
     const keys = getKeys();
@@ -207,15 +266,21 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     >
       <group ref={playerGroupRef}>
         <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />
-        <mesh castShadow userData={{ isPlayer: true }} scale={[0.8, 0.8, 0.8]}>
-          <capsuleGeometry args={[0.5, 1, 4, 8]} />
-          <meshStandardMaterial color="#ff8800" />
-        </mesh>
-        <mesh position={[0, 0.5, -0.5]}>
-          <boxGeometry args={[0.5, 0.2, 0.1]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
+        {/* Adjust scale and position of the model */}
+        {model && (
+          <primitive 
+            object={model} 
+            scale={[1, 1, 1]}    // Increased scale to 2
+            position={[0, -0.5, 0]}   // Adjust position to align with collider
+            castShadow 
+            receiveShadow 
+            userData={{ isPlayer: true }} 
+          />
+        )}
       </group>
     </RigidBody>
   );
 }
+
+// Update preload path
+useGLTF.preload('/bob_the_builder_capoeira_rig_animation.glb');

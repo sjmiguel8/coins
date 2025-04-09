@@ -1,0 +1,11 @@
+Model Information:
+* title:	Bob The Builder Capoeira Rig Animation
+* source:	https://sketchfab.com/3d-models/bob-the-builder-capoeira-rig-animation-7d577a8c970542e7accb126bc817e130
+* author:	Guilherme Navarro (https://sketchfab.com/guinavarro.al)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bob The Builder Capoeira Rig Animation" (https://sketchfab.com/3d-models/bob-the-builder-capoeira-rig-animation-7d577a8c970542e7accb126bc817e130) by Guilherme Navarro (https://sketchfab.com/guinavarro.al) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
