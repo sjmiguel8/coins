@@ -284,6 +284,10 @@ export default function Player({
     const forwardVector = new THREE.Vector3(0, 0, -1);
     const sidewaysVector = new THREE.Vector3(1, 0, 0);
 
+    // Apply camera rotation to movement vectors
+    forwardVector.applyQuaternion(cameraQuaternion);
+    sidewaysVector.applyQuaternion(cameraQuaternion);
+
     // Handle click-to-move navigation
     if (isNavigating && targetPosition) {
       const playerPos = new THREE.Vector3(position.x, position.y, position.z);
@@ -317,22 +321,22 @@ export default function Player({
       if (keys.forward) {
         targetVelocity.x += forwardVector.x * moveSpeed;
         targetVelocity.z += forwardVector.z * moveSpeed;
-        movementDirection.z -= 1;
+        movementDirection.add(forwardVector);
       }
       if (keys.backward) {
         targetVelocity.x -= forwardVector.x * moveSpeed;
         targetVelocity.z -= forwardVector.z * moveSpeed;
-        movementDirection.z += 1;
+        movementDirection.sub(forwardVector);
       }
       if (keys.left) {
         targetVelocity.x -= sidewaysVector.x * moveSpeed;
         targetVelocity.z -= sidewaysVector.z * moveSpeed;
-        movementDirection.x -= 1;
+        movementDirection.sub(sidewaysVector);
       }
       if (keys.right) {
         targetVelocity.x += sidewaysVector.x * moveSpeed;
         targetVelocity.z += sidewaysVector.z * moveSpeed;
-        movementDirection.x += 1;
+        movementDirection.add(sidewaysVector);
       }
     }
 

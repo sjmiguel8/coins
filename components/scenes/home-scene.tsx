@@ -14,11 +14,20 @@ interface GroundProps {
 }
 
 const Ground: React.FC<GroundProps> = (props) => {
+  const groundTexture = useMemo(() => {
+    return new THREE.TextureLoader().load("/cozy-day/textures/big shapes Base Color_0.jpeg");
+  }, []);
+
   return (
     <RigidBody type="fixed" rotation={[-Math.PI / 2, 0, 0]} {...props}>
       <mesh receiveShadow>
         <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial transparent opacity={0} />
+        <meshStandardMaterial
+          attach="material"
+          color="#ffffff"
+          map={groundTexture}
+          side={DoubleSide}
+        />
       </mesh>
     </RigidBody>
   )
@@ -28,9 +37,13 @@ export default function HomeScene() {
   // This component is responsible for rendering the home scene
   const { scene, camera, controls } = useThree() 
 
+  useEffect(() => {
+    console.log("Camera near:", camera.near, "far:", camera.far);
+  }, [camera]);
+
   // Define player props correctly
   const playerProps: PlayerProps = {
-    position: [4, 1.5, -12],
+    position: [-5, 1.5, -0],
     cameraLock: false,
     userData: { isPlayer: true },
     onReady: () => {
@@ -43,12 +56,12 @@ export default function HomeScene() {
   
   useEffect(() => {
     // Set the background color
-    scene.background = new THREE.Color("#222233");
+    scene.background = new THREE.Color("#97809d");
   }, [scene])
   
   const groundMaterial = useMemo(() => {
     const textureLoader = new THREE.TextureLoader();
-    const gradient = textureLoader.load('/gradient.png');
+    const gradient = textureLoader.load('/cozy-day/textures/floor n mattress Base Color_1.jpeg');
     gradient.wrapS = gradient.wrapT = THREE.RepeatWrapping;
     gradient.repeat.set(10, 10);
     
@@ -76,6 +89,26 @@ export default function HomeScene() {
     return material;
   }, []);
 
+  const skyCastleTextures = useMemo(() => {
+    const textureLoader = new THREE.TextureLoader();
+    return {
+      catsuBaseColor: textureLoader.load('/cozy-day/textures/catsu Base Color_5.jpeg'),
+      detailsBaseColor: textureLoader.load('/cozy-day/textures/details Base Color_3.jpeg'),
+    };
+  }, []);
+
+  useEffect(() => {
+    if (skyCastleScene) {
+      skyCastleScene.traverse((object: any) => {
+        if (object.isMesh) {
+          if (object.material) {
+            object.material.map = skyCastleTextures.catsuBaseColor;
+          }
+        }
+      });
+    }
+  }, [skyCastleScene, skyCastleTextures]);
+
   useGLTF.preload("/cozy-day/source/catsu2 sketchfab version light.glb")
 
   return (
@@ -88,11 +121,12 @@ export default function HomeScene() {
       {/* Ground plane for physics */}
       <Ground />
 
+
       {/* Visual ground model - no physics */}
       <primitive  
         object={skyCastleScene.clone()}
-        position={[1, 0, -1]}
-        scale={[1.2, 1.2, 1.2]}
+        position={[1, 0, 0]}
+        scale={[2, 2, 2]}
         rotation={[0, Math.PI, 0]}
         userData={{ isGround: true }} // Add this for click detection
       />

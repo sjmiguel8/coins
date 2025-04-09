@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function VirtualJoystick() {
   const [pressed, setPressed] = useState({
@@ -9,6 +9,8 @@ export default function VirtualJoystick() {
     left: false,
     right: false,
   });
+
+  const [useClickToMove, setUseClickToMove] = useState(true);
 
   // Helper to handle control press
   const handlePress = (control: 'forward' | 'backward' | 'left' | 'right', isPressed: boolean) => {
@@ -28,6 +30,24 @@ export default function VirtualJoystick() {
       }
     }));
   };
+
+  // Listen for changes to the click-to-move setting
+  useEffect(() => {
+    const handleToggleControls = (event: CustomEvent<{ useClickToMove: boolean }>) => {
+      setUseClickToMove(event.detail.useClickToMove);
+    };
+
+    window.addEventListener('toggle-controls', handleToggleControls as EventListener);
+
+    return () => {
+      window.removeEventListener('toggle-controls', handleToggleControls as EventListener);
+    };
+  }, []);
+
+  // Conditionally render the virtual joystick based on the click-to-move setting
+  if (useClickToMove) {
+    return null; // Don't render if click-to-move is enabled
+  }
 
   const buttonStyle = (control: 'forward' | 'backward' | 'left' | 'right') => `w-16 h-16 rounded-full flex items-center justify-center ${pressed[control] ? 'bg-blue-600' : 'bg-blue-500'} text-white text-2xl font-bold`;
 

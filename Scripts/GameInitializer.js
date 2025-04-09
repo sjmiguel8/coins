@@ -8,6 +8,8 @@ class GameInitializer {
     // Default control settings
     this.settings = {
       useClickToMove: true,
+      useVirtualJoystick: false,
+      cameraLock: false
     };
     
     // Initialize controls based on device detection
@@ -56,6 +58,8 @@ class GameInitializer {
     
     window.addEventListener('toggle-controls', (event) => {
       this.settings.useClickToMove = event.detail.useClickToMove;
+      this.settings.useVirtualJoystick = event.detail.useVirtualJoystick;
+      this.settings.cameraLock = event.detail.cameraLock;
       this.applyControlSettings();
     });
   }
