@@ -19,8 +19,12 @@ enum Controls {
   scene3 = 'scene3'
 }
 
+interface PlayerProps {
+  startPosition?: [number, number, number]
+}
+
 // Export the Player component directly
-export default function Player() {
+export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null)
   const playerGroupRef = useRef<THREE.Group>(null)
   const [, getKeys] = useKeyboardControls<Controls>()
@@ -38,18 +42,22 @@ export default function Player() {
 
   // Set up camera to follow player and start player in a safe position above ground
   useEffect(() => {
-    // Position player safely above the ground to prevent falling through
+    // Position player safely above the ground
     if (playerRef.current) {
-      // Start at a higher position to ensure player doesn't fall through ground
-      playerRef.current.setTranslation({ x: 0, y: 1.5, z: 0 }, true)
-      playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true) // Reset velocity
-      playerRef.current.wakeUp() // Ensure physics are active
+      playerRef.current.setTranslation({ 
+        x: startPosition[0], 
+        y: startPosition[1], 
+        z: startPosition[2] 
+      }, true)
+      
+      playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      playerRef.current.wakeUp()
     }
 
     // Position camera
-    camera.position.set(0, 3, 5)
-    camera.lookAt(0, 0, 0)
-  }, [camera])
+    camera.position.set(startPosition[0], startPosition[1] + 3, startPosition[2] + 5)
+    camera.lookAt(startPosition[0], startPosition[1], startPosition[2])
+  }, [camera, startPosition])
 
   useFrame((state, delta) => {
     if (!playerRef.current || !playerGroupRef.current || isTransitioning.current) return
@@ -76,7 +84,11 @@ export default function Player() {
     // Fall protection - if player falls below a certain threshold, reset position
     const position = playerRef.current.translation()
     if (position.y < -10) {
-      playerRef.current.setTranslation({ x: 0, y: 5, z: 0 }, true)
+      playerRef.current.setTranslation({ 
+        x: startPosition[0], 
+        y: startPosition[1], 
+        z: startPosition[2] 
+      }, true)
       playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
       return;
     }
@@ -206,7 +218,7 @@ export default function Player() {
     <RigidBody
       ref={playerRef}
       colliders={false}
-      position={[0, 1.5, 0]} // Start higher above ground to prevent falling through
+      position={startPosition}
       friction={0.2}
       linearDamping={4} 
       angularDamping={5}
@@ -218,7 +230,7 @@ export default function Player() {
     >
       <group ref={playerGroupRef}>
         <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />
-        <mesh castShadow userData={{ isPlayer: true }}>
+        <mesh castShadow userData={{ isPlayer: true }} scale={[0.8, 0.8, 0.8]}> {/* Adjust the scale here */}
           <capsuleGeometry args={[0.5, 1, 4, 8]} />
           <meshStandardMaterial color="#ff8800" />
         </mesh>
