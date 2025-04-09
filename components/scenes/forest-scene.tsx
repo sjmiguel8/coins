@@ -53,7 +53,7 @@ export default function ForestScene() {
     };
   }, []);
 
-  const [treePositions] = useState(() => {
+  const treePositions = useMemo(() => {
     const positions: [number, number, number][] = [];
     for (let i = 0; i < 20; i++) {
       const x = (Math.random() - 0.5) * 80;
@@ -61,7 +61,8 @@ export default function ForestScene() {
       positions.push([x, 0, z]);
     }
     return positions;
-  });
+  }, []);[]
+
 
   return (
     <>
@@ -104,7 +105,7 @@ export default function ForestScene() {
       })}
 
       {/* Player - position slightly higher to avoid clipping */}
-      <Player startPosition={[0, 1.5, 0]} />
+      <Player startPosition={[0, 1.5, 0]} cameraLock={false} />
 
       {/* Coins */}
       {coinPositions.map((position, i) => (

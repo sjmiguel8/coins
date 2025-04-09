@@ -27,6 +27,9 @@ enum Controls {
 
 interface PlayerProps {
   startPosition?: [number, number, number];
+  cameraPosition?: [number, number, number];
+  cameraTarget?: [number, number, number];
+  cameraLock: boolean; // Add cameraLock prop
 }
 
 // Define a global event to handle navigation requests from outside components
@@ -52,7 +55,7 @@ interface GameContextType {
   eatMeat: (hungerPoints: number) => void;
 }
 
-export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
+export default function Player({ startPosition = [0, 1.5, 0], cameraPosition = [0, 7.5, 10], cameraTarget = [0, 1.5, 0], cameraLock }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
   const [, getKeys] = useKeyboardControls<Controls>(); // Move useKeyboardControls here
@@ -73,7 +76,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     right: false,
   });
   const [useVirtualJoystick, setUseVirtualJoystick] = useState(true);
-  const [useClickToMove, setUseClickToMove] = useState(false);
+  const [useClickToMove, setUseClickToMove] = useState(true);
 
   const [model, setModel] = useState<THREE.Group | null>(null);
   const [mixer, setMixer] = useState<AnimationMixer | null>(null);
@@ -159,10 +162,17 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     };
     window.addEventListener('toggle-controls', handleToggleControls as EventListener);
 
+    // Listen for camera lock event
+    const handleCameraLock = (event: CustomEvent<{ cameraLock: boolean }>) => {
+      // setCameraLock(event.detail.cameraLock);
+    };
+    window.addEventListener('toggle-camera-lock', handleCameraLock as EventListener);
+
     return () => {
       window.removeEventListener('player-navigation', handleNavigation as EventListener);
       window.removeEventListener('virtual-joystick', handleVirtualControls as EventListener);
       window.removeEventListener('toggle-controls', handleToggleControls as EventListener);
+      window.removeEventListener('toggle-camera-lock', handleCameraLock as EventListener);
     };
   }, []);
 
@@ -229,8 +239,8 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     }
 
     if (camera && controls) {
-      camera.position.set(startPosition[0], startPosition[1] + 6, startPosition[2] + 10);
-      controls.target.set(startPosition[0], startPosition[1], startPosition[2]);
+      camera.position.set(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
+      controls.target.set(cameraTarget[0], cameraTarget[1], cameraTarget[2]);
       controls.update();
     }
   }, [camera, controls, startPosition]);
@@ -417,6 +427,13 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     const cameraTarget = new THREE.Vector3(playerPosition.x, playerPosition.y + 1, playerPosition.z);
 
     if (controls) {
+      controls.target.copy(cameraTarget);
+      controls.update();
+    }
+
+    // Update camera position if cameraLock is enabled
+    if (cameraLock && camera) {
+      camera.position.set(playerPosition.x + cameraPosition[0], playerPosition.y + cameraPosition[1], playerPosition.z + cameraPosition[2]);
       controls.target.copy(cameraTarget);
       controls.update();
     }

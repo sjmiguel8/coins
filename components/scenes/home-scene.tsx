@@ -14,10 +14,6 @@ export default function HomeScene() {
   
   // Load the sky castle model
   const { scene: skyCastleScene } = useGLTF('/skycastle.glb')
-  
-  useEffect(() => {
-    scene.background = new THREE.Color("#222233")
-  }, [scene])
 
   const groundMaterial = useMemo(() => {
     return new ShaderMaterial({
@@ -73,7 +69,12 @@ export default function HomeScene() {
      
       
       {/* Player - position slightly higher to avoid clipping */}
-      <Player startPosition={[4, 1.5, -12]} />
+      <Player 
+        startPosition={[4, 1.5, -12]}
+        cameraPosition={[4, 7.5, -2]}
+        cameraTarget={[4, 1.5, -12]}
+        cameraLock={false}
+      />
     </>
   )
 }

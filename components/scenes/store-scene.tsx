@@ -119,7 +119,7 @@ export default function StoreScene() {
       </group>
 
       {/* Player */}
-      <Player startPosition={[0, 1.5, 0]} />
+      <Player startPosition={[0, 1.5, 0]} cameraLock={false} />
       
       {/* We export the shop state so the parent can render UI outside the canvas */}
       <ShopStateExporter isOpen={showShop} setIsOpen={setShowShop} />

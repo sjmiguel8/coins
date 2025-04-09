@@ -9,8 +9,9 @@ export default function Menu() {
   const { changeScene, currentScene } = useGameContext()
   const [useVirtualJoystick, setUseVirtualJoystick] = useState(false);
   const [useClickToMove, setUseClickToMove] = useState(true);
+  const [cameraLock, setCameraLock] = useState(false); // Add cameraLock state  const [cameraLock, setCameraLock] = useState(false);
 
-  // Dispatch initial control settings when component mounts
+  // Dispatch initial control settings when component mountsal control settings when component mounts
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('toggle-controls', {
       detail: {
@@ -39,7 +40,7 @@ export default function Menu() {
     }
   }
 
-  // Listen for escape key to exit fullscreen
+  // Listen for escape key to exit fullscreenape key to exit fullscreen
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && document.fullscreenElement) {
@@ -57,7 +58,7 @@ export default function Menu() {
     };
   }, []);
 
-  // Check fullscreen status when component mounts and on change
+  // Check fullscreen status when component mounts and on changeen status when component mounts and on change
   useEffect(() => {
     const handleFullScreenChange = () => {
       setIsFullScreen(!!document.fullscreenElement);
@@ -196,17 +197,33 @@ export default function Menu() {
             />
             Virtual Joystick
           </label>
-          
+          <label style={{ display: 'block', marginBottom: '5px', color: 'white' }}>
+            <input
+              type="checkbox"
+              checked={cameraLock}
+              onChange={(e) => {
+                setCameraLock(e.target.checked);
+                window.dispatchEvent(new CustomEvent('toggle-camera-lock', {
+                  detail: {
+                    cameraLock: e.target.checked,
+                  }
+                }));
+                setIsOpen(false);
+              }}
+              style={{ marginRight: '5px' }}
+            />
+            Camera Lock
+          </label>
           <h3 style={menuSectionTitleStyle}>Options</h3>
           <button 
-            onClick={toggleFullScreen}
             style={buttonStyle}
+            onClick={toggleFullScreen}
           >
             {isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           </button>
           <button 
-            onClick={() => setIsOpen(false)}
             style={buttonStyle}
+            onClick={() => setIsOpen(false)}
           >
             Resume
           </button>
