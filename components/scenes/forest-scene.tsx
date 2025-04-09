@@ -16,15 +16,21 @@ export default function ForestScene() {
   // Load tree model
   const { scene: treeScene } = useGLTF('/decorative_tree.glb')
 
-  // Generate random coin positions
+  // Generate random coin positions - separated from creatures
   useEffect(() => {
     scene.background = new THREE.Color("#8bc34a")
 
+    // Generate random coin positions away from the origin where player spawns
     const newCoins: [number, number, number][] = []
     for (let i = 0; i < 20; i++) {
-      const x = (Math.random() - 0.5) * 30
-      const z = (Math.random() - 0.5) * 30
-      newCoins.push([x, 1, z]) // Positioned at y=1 for better visibility
+      let x: number, z: number
+      // Make sure coins are somewhat distributed and not too close to center
+      do {
+        x = (Math.random() - 0.5) * 40
+        z = (Math.random() - 0.5) * 40
+      } while (Math.sqrt(x*x + z*z) < 5); // Keep coins away from player spawn point
+      
+      newCoins.push([x, 0.75, z]) // Position at y=0.75 for better visibility
     }
     setCoins(newCoins)
   }, [scene])
@@ -35,11 +41,12 @@ export default function ForestScene() {
 
       {/* Ground - improved with thicker collider and better physics */}
       <RigidBody type="fixed" friction={1} restitution={0}>
+        {/* Visible ground plane */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial color="#4b7d2f" />
         </mesh>
-        {/* Add an invisible collision box below to prevent falling through */}
+        {/* Invisible collision box below to prevent falling through */}
         <mesh position={[0, -0.5, 0]} visible={false}>
           <boxGeometry args={[100, 1, 100]} />
           <meshStandardMaterial color="red" transparent opacity={0} />
@@ -50,8 +57,8 @@ export default function ForestScene() {
       {Array.from({ length: 50 }).map((_, i) => {
         const x = (Math.random() - 0.5) * 80
         const z = (Math.random() - 0.5) * 80
-        const scale = Math.random() * 0.5 + 0.8 // Slightly larger scale for trees
-        const rotation = Math.random() * Math.PI * 2 // Random rotation for variety
+        const scale = Math.random() * 0.5 + 0.8
+        const rotation = Math.random() * Math.PI * 2
 
         // Clone the tree for each instance
         const treeClone = treeScene.clone()
@@ -84,10 +91,13 @@ export default function ForestScene() {
         <Coin key={i} position={position} />
       ))}
 
-      {/* Creatures */}
+      {/* Creatures - placed away from coins */}
       {Array.from({ length: 10 }).map((_, i) => {
-        const x = (Math.random() - 0.5) * 30
-        const z = (Math.random() - 0.5) * 30
+        // Position creatures in a different area than coins
+        const angle = Math.random() * Math.PI * 2
+        const radius = 10 + Math.random() * 15
+        const x = Math.cos(angle) * radius
+        const z = Math.sin(angle) * radius
         return <Creature key={i} position={[x, 0.5, z]} />
       })}
     </>

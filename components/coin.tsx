@@ -22,22 +22,20 @@ export default function Coin({ position }: { position: [number, number, number] 
   useFrame((state, delta) => {
     if (collected || isProcessing.current || !coinRef.current) return
 
-    // Rotate coin
-    coinRef.current.rotation.y += delta * 3
-    
-    // Simple hover effect with sin wave
+    // Simple hover effect with sin wave - just up and down
     const time = state.clock.getElapsedTime()
-    const hoverY = position[1] + Math.sin(time * 2) * 0.1
+    const hoverY = position[1] + Math.sin(time * 1.5) * 0.1
     
-    // Update coin position
-    coinRef.current.position.set(position[0], hoverY, position[2])
+    // Update coin position - only Y position changes for hover
+    coinRef.current.position.y = hoverY
     
-    // Find player in scene - very simple check
+    // Find player in scene
     let playerMesh: THREE.Object3D | null = null
     
     // Only do this check once every 10 frames to improve performance
     if (Math.floor(state.clock.getElapsedTime() * 60) % 10 === 0) {
       state.scene.traverse((object) => {
+        // Only check for player, not creatures
         if (object.userData && object.userData.isPlayer) {
           playerMesh = object
         }
@@ -47,7 +45,6 @@ export default function Coin({ position }: { position: [number, number, number] 
     // Check player proximity only if we found a player
     if (playerMesh && !isProcessing.current) {
       const coinWorldPos = new THREE.Vector3()
-      // Fix TypeScript error - explicitly cast to Object3D 
       const coinObject = coinRef.current as THREE.Object3D
       coinObject.getWorldPosition(coinWorldPos)
       
@@ -56,7 +53,8 @@ export default function Coin({ position }: { position: [number, number, number] 
       
       const distance = coinWorldPos.distanceTo(playerWorldPos)
       
-      if (distance < 2) {
+      // Only player can collect coins (not creatures)
+      if (distance < 1.5) {
         // Prevent multiple collections
         isProcessing.current = true
         
@@ -76,7 +74,8 @@ export default function Coin({ position }: { position: [number, number, number] 
     <group
       ref={coinRef}
       position={[position[0], position[1], position[2]]}
-      scale={[0.2, 0.2, 0.2]} // Reduce scale from 0.5 to 0.2 to make coins much smaller
+      scale={[0.05, 0.05, 0.05]} // Keep coins small
+      rotation={[0, Math.random() * Math.PI * 2, 0]} // Random initial rotation
     >
       {/* Use the loaded coin GLB model */}
       <primitive object={modelRef.current} />

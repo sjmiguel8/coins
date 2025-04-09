@@ -2,12 +2,11 @@
 
 import { useRef, useState, useEffect } from "react"
 import { useFrame } from "@react-three/fiber"
-import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 
 export default function Creature({ position }: { position: [number, number, number] }) {
-  const rigidBodyRef = useRef<any>(null)
+  const creatureRef = useRef<THREE.Group>(null)
   const [direction, setDirection] = useState(() => Math.random() * Math.PI * 2)
   const [moveTimer, setMoveTimer] = useState(0)
   
@@ -19,7 +18,7 @@ export default function Creature({ position }: { position: [number, number, numb
   // Configure the loaded model once
   useEffect(() => {
     if (modelRef.current) {
-      // Make the model bigger (increased from 0.4 to 1.2)
+      // Make the model bigger
       modelRef.current.scale.set(1.2, 1.2, 1.2)
       
       // Move the model up slightly to account for new size
@@ -52,13 +51,8 @@ export default function Creature({ position }: { position: [number, number, numb
     return () => clearTimeout(timerId)
   }, [direction])
 
-  // Animation parameters for bobbing/living movement
-  const bobHeight = useRef(0.05 + Math.random() * 0.1)
-  const bobSpeed = useRef(0.5 + Math.random() * 1.0)
-  const wobbleAmount = useRef(0.03 + Math.random() * 0.04)
-
   useFrame((state, delta) => {
-    if (!rigidBodyRef.current || !modelRef.current) return
+    if (!creatureRef.current || !modelRef.current) return
 
     // Update move timer
     setMoveTimer(prev => prev + delta)
@@ -68,51 +62,38 @@ export default function Creature({ position }: { position: [number, number, numb
     const vx = Math.cos(direction) * speed * delta
     const vz = Math.sin(direction) * speed * delta
     
-    // Get current position
-    const position = rigidBodyRef.current.translation()
-    
     // Calculate new position
-    const newX = position.x + vx
-    const newZ = position.z + vz
+    const newX = position[0] + vx
+    const newZ = position[2] + vz
     
     // Add animated bobbing motion for vertical movement
     const time = state.clock.getElapsedTime()
-    const bobMotion = Math.sin(time * bobSpeed.current) * bobHeight.current
+    const bobMotion = Math.sin(time * 0.5) * 0.05
     
-    // Add subtle wobbling for side-to-side "life-like" motion
-    const wobbleMotion = Math.sin(time * 2.3) * wobbleAmount.current
+    // Keep creatures from moving too far
+    const maxDistance = 40
+    const originDistance = Math.sqrt(newX * newX + newZ * newZ)
+    if (originDistance > maxDistance) {
+      // Change direction to move back toward the center
+      setDirection(Math.atan2(-position[2], -position[0]))
+    }
     
     // Set new position with bob
-    rigidBodyRef.current.setTranslation({ 
-      x: newX, 
-      y: position.y + bobMotion, 
-      z: newZ 
-    }, true)
+    creatureRef.current.position.set(newX, 0.5 + bobMotion, newZ)
     
-    // Rotate to face direction of movement with added "life-like" wobble
-    const targetRotation = new THREE.Euler(
-      Math.sin(time * 1.7) * 0.1, // Slight up/down head movement
-      direction + wobbleMotion, // Basic direction plus wobble
-      Math.sin(time * 2.1) * 0.08 // Slight side-to-side roll
-    )
-    
-    const quaternion = new THREE.Quaternion().setFromEuler(targetRotation)
-    rigidBodyRef.current.setRotation(quaternion, true)
+    // Rotate to face direction of movement
+    creatureRef.current.rotation.y = direction
   })
   
   return (
-    <RigidBody 
-      ref={rigidBodyRef} 
-      type="dynamic" 
-      position={[position[0], position[1], position[2]]} 
-      lockRotations={false}
+    <group 
+      ref={creatureRef} 
+      position={[position[0], 0.5, position[2]]} 
       userData={{ isCreature: true }}
-      colliders="hull"
-      mass={2}
     >
       {/* Use the loaded GLB model */}
       <primitive object={modelRef.current} />
-    </RigidBody>
+    </group>
   )
 }
 
