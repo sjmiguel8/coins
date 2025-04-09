@@ -35,34 +35,12 @@ export default function ForestScene() {
     setCoinPositions(newCoins)
   }, []) // Empty dependency array to run only once
 
-  const groundMaterial = useMemo(() => {
-    return new ShaderMaterial({
-      vertexShader: `
-        varying vec3 vPosition;
-        void main() {
-          vPosition = position;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vPosition;
-        void main() {
-          vec3 color1 = vec3(0.1, 0.3, 0.1); // Dark green
-          vec3 color2 = vec3(0.4, 0.7, 0.4); // Light green
-          vec3 color = mix(color1, color2, vPosition.y / 20.0 + 0.5);
-          gl_FragColor = vec4(color, 1.0);
-        }
-      `,
-      side: DoubleSide,
-    });
-  }, []);
-
   useEffect(() => {
     const handleCoinDrop = (event: CustomEvent<[number, number, number]>) => {
       setCoinPositions((prevCoinPositions) => [...prevCoinPositions, event.detail]);
     };
 
-    const handleMeatDrop = (event: CustomEvent<{position: [number, number, number], attacker: any}>) => {
+    const handleMeatDrop = (event: CustomEvent<{ position: [number, number, number]; attacker: any }>) => {
       setMeatPositions((prevMeatPositions) => [...prevMeatPositions, event.detail.position]);
     };
 

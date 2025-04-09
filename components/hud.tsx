@@ -25,7 +25,7 @@ export default function HUD() {
       {/* Health and Hunger bars */}
       <div className="absolute top-4 left-4 bg-black/50 text-white px-4 py-2 rounded-md">
         <p>Health: {clampedHealth}</p>
-        <p>Hunger: {clampedHunger}</p>
+        <p>Hunger: {clampedHunger.toFixed(1)}</p>
       </div>
 
       {/* Conditionally render MobileControls */}

@@ -8,10 +8,11 @@ import ForestScene from "./scenes/forest-scene"
 import HomeScene from "./scenes/home-scene"
 import StoreScene from "./scenes/store-scene"
 import HUD from "./hud"
+import DeathScreen from "./death-screen"
 import { useGameContext } from "./game-context"
 
 export default function Game() {
-  const { currentScene } = useGameContext()
+  const { currentScene, isDead, respawnCountdown } = useGameContext()
 
   return (
     <>
@@ -22,6 +23,7 @@ export default function Game() {
           { name: "left", keys: ["ArrowLeft", "a", "A"] },
           { name: "right", keys: ["ArrowRight", "d", "D"] },
           { name: "jump", keys: ["Space"] },
+          { name: "attack", keys: ["e", "E"] },
           { name: "scene1", keys: ["1"] },
           { name: "scene2", keys: ["2"] },
           { name: "scene3", keys: ["3"] },
@@ -47,6 +49,7 @@ export default function Game() {
         </Canvas>
       </KeyboardControls>
       <HUD />
+      {isDead && <DeathScreen countdown={respawnCountdown} />}
     </>
   )
 }

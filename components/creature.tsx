@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
@@ -17,27 +17,40 @@ export default function Creature({ position }: CreatureProps) {
   const [showHealthBar, setShowHealthBar] = useState(false)
   const [lastAttacked, setLastAttacked] = useState(0)
   const [isDead, setIsDead] = useState(false)
+  const attackRange = 2
+  const attackDamage = 10
+  const attackCooldown = 2000 // 2 seconds between attacks
+  const [lastAttackTime, setLastAttackTime] = useState(0)
+  const [isAggressive, setIsAggressive] = useState(false)
+  const [targetPlayer, setTargetPlayer] = useState<THREE.Object3D | null>(null)
+  const detectionRange = 8 // Range to detect player
   
   // Load the model once and clone it
   const { scene: originalScene } = useGLTF('/base_basic_pbr.glb')
-  const modelRef = useRef<THREE.Object3D>(originalScene.clone())
-  const { scene: meatScene } = useGLTF('/meat.glb')
+  const modelRef = useRef<THREE.Object3D>(null)
+  useGLTF('/meat.glb')
+
+  const model = useMemo(() => originalScene.clone(), [originalScene]);
 
   // Configure model appearance
   useEffect(() => {
-    if (modelRef.current) {
-      modelRef.current.scale.set(1.2, 1.2, 1.2)
-      modelRef.current.position.set(0, -0.5, 0)
+    if (model) {
+      model.scale.set(1.2, 1.2, 1.2)
+      model.position.set(0, -0.5, 0)
       
       // Apply shadows
-      modelRef.current.traverse((node) => {
+      model.traverse((node) => {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true
           node.receiveShadow = true
         }
       })
     }
-  }, [])
+  }, [model])
+
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
 
   // Direction changes
   useEffect(() => {
@@ -87,21 +100,18 @@ export default function Creature({ position }: CreatureProps) {
   };
 
   // Function to drop loot
+
   const dropLoot = (attacker: any) => {
-    // Drop coins
-    const coinDropAmount = Math.floor(Math.random() * 5) + 1;
-    for (let i = 0; i < coinDropAmount; i++) {
+    if (Math.random() < 0.5) {
       const coinPosition = [
         position[0] + (Math.random() - 0.5) * 2,
         position[1] + 0.5,
         position[2] + (Math.random() - 0.5) * 2,
       ] as [number, number, number];
       // Dispatch custom event for coin drop
-      window.dispatchEvent(new CustomEvent('coin-drop', { detail: coinPosition }));
+      window.dispatchEvent(new CustomEvent('coin-drop', { detail: { position: coinPosition, attacker: attacker } }));
     }
-
-    // Drop meat
-    if (Math.random() < 0.5) {
+  if (Math.random() < 0.5) {
       const meatPosition = [
         position[0] + (Math.random() - 0.5) * 2,
         position[1] + 0.5,
@@ -126,11 +136,95 @@ export default function Creature({ position }: CreatureProps) {
     };
   }, []);
 
-  useFrame((_, delta) => {
+  // Check for nearby player and become aggressive
+  const checkForPlayer = () => {
+    if (isDead) return
+    
+    let playerMesh: THREE.Object3D | null = null
+    const gameScene = modelRef.current?.parent as THREE.Scene
+    if (!gameScene) return
+    
+    gameScene.traverse((object: THREE.Object3D) => {
+      if (object.userData && object.userData.isPlayer) {
+        playerMesh = object as THREE.Object3D
+      }
+    })
+    
+    if (playerMesh && creatureRef.current) {
+      const creaturePos = new THREE.Vector3()
+      const playerPos = new THREE.Vector3()
+      
+      creatureRef.current.getWorldPosition(creaturePos)      
+      
+      const distance = creaturePos.distanceTo(playerPos)
+      
+      // Become aggressive if player is close enough
+      if (distance <= detectionRange) {
+        setIsAggressive(true)
+        setTargetPlayer(playerMesh)
+      } else {
+        setIsAggressive(false)
+        setTargetPlayer(null)
+      }
+    }
+  }
+  
+  // Attack the player if in range
+  const attackPlayer = () => {
+    if (isDead || !isAggressive || !targetPlayer || !creatureRef.current) return
+    
+    const now = Date.now()
+    if (now - lastAttackTime < attackCooldown) return
+    
+    const creaturePos = new THREE.Vector3()
+    const playerPos = new THREE.Vector3()
+    
+    creatureRef.current.getWorldPosition(creaturePos)
+    targetPlayer.getWorldPosition(playerPos)
+    
+    const distance = creaturePos.distanceTo(playerPos)
+    
+    if (distance <= attackRange) {
+      setLastAttackTime(now)
+      
+      // Deal damage to player
+      window.dispatchEvent(new CustomEvent('player-damage', {
+        detail: {
+          damage: attackDamage,
+        }
+      }))
+    }
+  }
+
+  useEffect(() => {
+    const checkInterval = setInterval(checkForPlayer, 1000)
+    return () => clearInterval(checkInterval)
+  }, [])  
+  // Modified useFrame logic to chase player when aggressive
+  useFrame((state, delta) => {
     if (!creatureRef.current || isDead) return
 
+    // Attack player if aggressive and in range
+    if (isAggressive && targetPlayer) {
+      attackPlayer()
+      
+      // Chase player
+      const creaturePos = creatureRef.current.position.clone()
+      const playerPos = new THREE.Vector3()
+      targetPlayer.getWorldPosition(playerPos)
+      
+      // Calculate angle to player
+      const angleToPlayer = Math.atan2(
+        playerPos.z - creaturePos.z, 
+        playerPos.x - creaturePos.x
+      )
+      
+      // Set direction towards player
+      setDirection(angleToPlayer)
+    }
+
     // Simple movement
-    const speed = 1
+    const speed = isAggressive ? 1.5 : 1 // Move faster when aggressive
     const xOffset = Math.cos(direction) * speed * delta
     const zOffset = Math.sin(direction) * speed * delta
     
@@ -197,7 +291,7 @@ export default function Creature({ position }: CreatureProps) {
           </mesh>
         </mesh>
       )}
-      <primitive object={modelRef.current} />
+      {modelRef.current && <primitive object={modelRef.current} />}
     </group>
   )
 }

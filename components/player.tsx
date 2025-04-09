@@ -44,13 +44,19 @@ interface GameContextType {
   hunger: number;
   setHunger: (hunger: number) => void;
   changeScene: (sceneName: string) => void;
+  health: number;
+  damagePlayer: (damage: number) => void;
+  isDead: boolean;
+  lastAttacked: number;
+  setLastAttacked: (time: number) => void;
+  eatMeat: (hungerPoints: number) => void;
 }
 
 export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
   const [, getKeys] = useKeyboardControls<Controls>(); // Move useKeyboardControls here
-  const { camera, controls, scene, setHealth: updateHealth, hunger: initialHunger, setHunger, changeScene } = useGameContext() as unknown as GameContextType;
+  const { camera, controls, scene, setHealth: updateHealth, hunger: initialHunger, setHunger, changeScene, health, damagePlayer, isDead, lastAttacked, setLastAttacked, eatMeat } = useGameContext() as unknown as GameContextType;
 
   // Use useRef instead of creating new objects on each render
   const isTransitioning = useRef(false);
@@ -66,18 +72,11 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     left: false,
     right: false,
   });
-
   const [useVirtualJoystick, setUseVirtualJoystick] = useState(true);
   const [useClickToMove, setUseClickToMove] = useState(false);
 
-  // Load the phoenix bird model
   const [model, setModel] = useState<THREE.Group | null>(null);
   const [mixer, setMixer] = useState<AnimationMixer | null>(null);
-
-  const [lastAttacked, setLastAttacked] = useState<number>(0);
-  const [isDead, setIsDead] = useState(false);
-  const [respawnPosition, setRespawnPosition] = useState<[number, number, number]>(startPosition);
-  const [showHealthBar, setShowHealthBar] = useState(true); // Add this line
 
   // Attack variables
   const [isAttacking, setIsAttacking] = useState(false);
@@ -87,7 +86,7 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   const maxHealth = 1800; // Set maximum health
   const defaultHealth = maxHealth; // Set default health to maxHealth
 
-  const [localHealth, setLocalHealth] = useState(defaultHealth); // Use local state for health
+  const [localHealth] = useState(defaultHealth); // Use local state for health
   
   // Use refs to store previous values for comparison
   const prevLocalHealthRef = useRef(localHealth);
@@ -229,10 +228,12 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       playerRef.current.wakeUp();
     }
 
-    if (camera) {
+    if (camera && controls) {
       camera.position.set(startPosition[0], startPosition[1] + 6, startPosition[2] + 10);
+      controls.target.set(startPosition[0], startPosition[1], startPosition[2]);
+      controls.update();
     }
-  }, [camera, startPosition]);
+  }, [camera, controls, startPosition]);
 
   // Camera rotation effect
   useEffect(() => {
@@ -242,8 +243,10 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
   }, [camera]);
   
   // Main game loop - handles movement, physics, animations
-  useFrame((_, delta) => {
+  useFrame(({camera, scene, gl, ...rest}, delta) => {
     if (!playerRef.current || !playerGroupRef.current || isTransitioning.current) return;
+
+    const position = playerRef.current.translation();
 
     // Update the animation mixer each frame
     if (mixer) {
@@ -266,19 +269,8 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       }, 100);
     }
 
-    // Reset if fallen off map
-    const position = playerRef.current.translation();
-    if (position.y < -10) {
-      playerRef.current.setTranslation(
-        { x: startPosition[0], y: startPosition[1], z: startPosition[2] },
-        true
-      );
-      playerRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      return;
-    }
-
     // Base movement settings
-    const moveSpeed = 5.0;
+    const moveSpeed = 7.0;
     const rigidBodyVelocity = playerRef.current.linvel();
     const targetVelocity = { x: 0, y: rigidBodyVelocity.y, z: 0 };
     const movementDirection = new THREE.Vector3(0, 0, 0);
@@ -292,10 +284,6 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
     // Create movement vectors
     const forwardVector = new THREE.Vector3(0, 0, -1);
     const sidewaysVector = new THREE.Vector3(1, 0, 0);
-
-    // Rotate the movement vector by the camera's quaternion
-    forwardVector.applyQuaternion(cameraQuaternion);
-    sidewaysVector.applyQuaternion(cameraQuaternion);
 
     // Handle click-to-move navigation
     if (useClickToMove && isNavigating && targetPosition) {
@@ -433,6 +421,92 @@ export default function Player({ startPosition = [0, 1.5, 0] }: PlayerProps) {
       controls.update();
     }
   });
+
+  // Method to handle attacking
+  const handleAttack = () => {
+    if (isDead) return
+
+    // Define attack cooldown
+    const attackCooldown = 500; // Cooldown in milliseconds
+    
+    // Check attack cooldown
+    const now = Date.now()
+    if (now - lastAttacked < attackCooldown) return
+    
+    setLastAttacked(now)
+    
+    if (!playerRef.current) return
+    
+    const playerPosition = playerRef.current.translation()
+    const attackPosition = new THREE.Vector3(playerPosition.x, playerPosition.y, playerPosition.z)
+
+    scene.traverse((object: THREE.Object3D) => {
+      if (object.userData && object.userData.isCreature) {
+        const creaturePosition = new THREE.Vector3()
+        object.getWorldPosition(creaturePosition)
+
+        const distance = attackPosition.distanceTo(creaturePosition)
+
+        if (distance <= attackRange) {
+          // Deal damage to the creature
+          const damageEvent = new CustomEvent('creature-damage', {
+            detail: {
+              target: object,
+              damage: attackDamage,
+              attacker: playerRef.current
+            }
+          })
+          window.dispatchEvent(damageEvent)
+        }
+      }
+    })
+  }
+  
+  // Listen for meat collection events
+  useEffect(() => {
+    const handleMeatCollection = (event: CustomEvent<{ position: [number, number, number] }>) => {
+      if (playerRef.current) {
+        const playerPosition = playerRef.current.translation()
+        const meatPosition = new THREE.Vector3(...event.detail.position)
+        
+        const distance = new THREE.Vector3(playerPosition.x, playerPosition.y, playerPosition.z)
+          .distanceTo(meatPosition)
+          
+        if (distance < 1.5) {
+          eatMeat(30) // Restore 30 hunger points when eating meat
+        }
+      }
+    }
+    
+    window.addEventListener('meat-collected', handleMeatCollection as EventListener)
+    
+    return () => {
+      window.removeEventListener('meat-collected', handleMeatCollection as EventListener)
+    }
+  }, [])
+  
+  // Listen for creature attacks on player
+  useEffect(() => {
+    const handleCreatureAttack = (event: CustomEvent<{ damage: number }>) => {
+      if (isDead) return
+      damagePlayer(event.detail.damage)
+      setLastAttacked(Date.now())
+    }
+    
+    window.addEventListener('player-damage', handleCreatureAttack as EventListener)
+    
+    return () => {
+      window.removeEventListener('player-damage', handleCreatureAttack as EventListener)
+    }
+  }, [isDead])
+  
+  // Handle keyboard input for attacking
+  useEffect(() => {
+    const keys = getKeys();
+    if (keys.attack) {
+      handleAttack();
+    }
+  }, [getKeys, handleAttack]);
 
   return (
     <RigidBody
