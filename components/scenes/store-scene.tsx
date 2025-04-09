@@ -6,75 +6,78 @@ import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
 import Player from "../player"
 import * as THREE from "three"
-import CameraControls from "../CameraControls" // Import CameraControls
-import { Mesh, ShaderMaterial, DoubleSide } from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import CameraControls from "../CameraControls" 
+import { useGameContext } from "../game-context"
+
+// Create a new component for the shop UI that's rendered outside the canvas
+export function DuckShop({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50">
+      <div className="bg-white p-8 rounded-lg">
+        <h2 className="text-2xl font-bold mb-4">Duck's Shop</h2>
+        <p>Welcome to my shop! What would you like to buy?</p>
+        <button 
+          onClick={onClose} 
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
+        >
+          Close Shop
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function StoreScene() {
   const { scene } = useThree()
-  const medievalCampScene = useGLTF('/medieval_camp.glb').scene
-  const [duckModel, setDuckModel] = useState<THREE.Group | null>(null);
-  const [showStore, setShowStore] = useState(false);
-  const duckRef = useRef<THREE.Mesh>(null);
-
-  useEffect(() => {
-    const loader = new GLTFLoader();
-    loader.load(
-      '/travelers_duck.glb',
-      (gltf) => {
-        const model = gltf.scene;
-        model.traverse((node: any) => {
-          if (node.isMesh) {
-            node.castShadow = true;
-            node.receiveShadow = true;
-          }
-        });
-        setDuckModel(model);
-        scene.add(model);
-      },
-      undefined,
-      (error) => {
-        console.error('An error happened loading the GLTF:', error);
-      }
-    );
-  }, [scene]);
-
-  const handleDuckClick = () => {
-    setShowStore(true);
-  };
+  const { addCoins } = useGameContext()
+  const [showShop, setShowShop] = useState(false)
+  const duckRef = useRef<THREE.Group>(null)
+  
+  // Load models
+  const { scene: medievalCampScene } = useGLTF('/medieval_camp.glb')
+  const { scene: duckScene } = useGLTF('/travelers_duck.glb')
 
   useEffect(() => {
     scene.background = new THREE.Color("#97809d")
   }, [scene])
   
+  // Handler for duck clicks that will be called from outside the component
+  const handleDuckClick = () => {
+    // Show shop UI (This state will be checked from parent)
+    setShowShop(true)
+    // Also add a coin for testing
+    addCoins(1)
+  }
+  
   return (
     <>
-      <CameraControls /> {/* Add CameraControls here */}
+      <CameraControls />
       <fog attach="fog" args={["#97809d", 30, 50]} />
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 10, 10]} intensity={1} castShadow />
 
       {/* Ground plane for physics */}
       <RigidBody type="fixed" friction={1} restitution={0}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
+        <mesh rotation={[-Math.PI / 1, 0, 0]} receiveShadow position={[0, 0, 0]}>
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial transparent opacity={0} />
         </mesh>
       </RigidBody>
       
-      {/* Duck Model */}
-      {duckModel && (
-        <mesh 
-          ref={duckRef}
-          position={[5, 1, -5]} 
-          scale={[2, 2, 2]}
-          onClick={handleDuckClick}
-          castShadow
-          receiveShadow
-        >
-          <primitive object={duckModel} />
-        </mesh>
-      )}
+      {/* Duck - Using a single duck with proper mesh and click handling */}
+      <group 
+        ref={duckRef}
+        position={[5, 0, -5]} 
+        scale={[5, 5, 5]}
+        rotation={[0, Math.PI, 0]}
+        onPointerDown={(e) => {
+          e.stopPropagation() // Prevent event from bubbling up
+          handleDuckClick()
+        }}
+        onClick={handleDuckClick}
+      >
+        <primitive object={duckScene.clone()} castShadow receiveShadow />
+      </group>
 
       {/* Visual ground model - no physics */}
       <primitive 
@@ -112,21 +115,30 @@ export default function StoreScene() {
 
       {/* Player */}
       <Player startPosition={[0, 1.5, 0]} />
-
-      {/* Shop Interface (Conditionally Rendered) */}
-      {showStore && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-          <div className="bg-white p-8 rounded-lg">
-            <h2 className="text-2xl font-bold mb-4">Duck's Shop</h2>
-            <p>Welcome to my shop! What would you like to buy?</p>
-            <button onClick={() => setShowStore(false)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
-              Close Shop
-            </button>
-          </div>
-        </div>
-      )}
+      
+      {/* We export the shop state so the parent can render UI outside the canvas */}
+      <ShopStateExporter isOpen={showShop} setIsOpen={setShowShop} />
     </>
   )
+}
+
+// This component is a hack to export state from the 3D scene to the outside world
+function ShopStateExporter({ 
+  isOpen, 
+  setIsOpen 
+}: { 
+  isOpen: boolean; 
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>> 
+}) {
+  // Use a global window property to expose the state
+  useEffect(() => {
+    // @ts-ignore - Adding custom property to window
+    window.duckShopOpen = isOpen;
+    // @ts-ignore - Adding custom property to window
+    window.closeDuckShop = () => setIsOpen(false);
+  }, [isOpen, setIsOpen]);
+  
+  return null;
 }
 
 useGLTF.preload('/medieval_camp.glb')

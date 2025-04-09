@@ -84,6 +84,7 @@ function ErrorFallback() {
 export default function App() {
   // Ensure client-side rendering for React Three Fiber
   const [ready, setReady] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
   
   // Only render the Canvas on client-side
   useEffect(() => {
@@ -92,8 +93,29 @@ export default function App() {
       setReady(true);
     }, 500);
     
-    return () => clearTimeout(timer);
+    // Poll for shop state changes
+    const checkShopState = setInterval(() => {
+      // @ts-ignore - Access custom property on window
+      if (window.duckShopOpen !== undefined) {
+        setShopOpen(window.duckShopOpen);
+      }
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(checkShopState);
+    };
   }, []);
+
+  // Handler to close the shop
+  const handleCloseShop = () => {
+    // @ts-ignore - Access custom property on window
+    if (window.closeDuckShop) {
+      // @ts-ignore - Access custom property on window
+      window.closeDuckShop();
+    }
+    setShopOpen(false);
+  };
 
   return (
     <main className="w-full h-screen overflow-hidden">
@@ -120,14 +142,27 @@ export default function App() {
           </div>
           
           {/* UI layer that sits on top of the Canvas */}
-          {/* Conditionally render LoadingScreen and ErrorFallback */}
           {!ready && <LoadingScreen />}
-          {/* UI layer that sits on top of the Canvas */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="pointer-events-auto">
               <Menu />
             </div>
             <HUD />
+            {/* Render shop UI outside the canvas when active */}
+            {shopOpen && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50 pointer-events-auto">
+                <div className="bg-white p-8 rounded-lg">
+                  <h2 className="text-2xl font-bold mb-4">Duck's Shop</h2>
+                  <p>Welcome to my shop! What would you like to buy?</p>
+                  <button 
+                    onClick={handleCloseShop} 
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
+                  >
+                    Close Shop
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </KeyboardControls>
       </GameProvider>
