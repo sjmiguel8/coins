@@ -161,25 +161,6 @@ export default function Menu() {
           <label style={{ display: 'block', marginBottom: '5px', color: 'white' }}>
             <input
               type="checkbox"
-              checked={useVirtualJoystick}
-              onChange={(e) => {
-                setUseVirtualJoystick(e.target.checked);
-                setUseClickToMove(!e.target.checked);
-                window.dispatchEvent(new CustomEvent('toggle-controls', {
-                  detail: {
-                    useVirtualJoystick: e.target.checked,
-                    useClickToMove: !e.target.checked,
-                  }
-                }));
-                setIsOpen(false);
-              }}
-              style={{ marginRight: '5px' }}
-            />
-            Virtual Joystick
-          </label>
-          <label style={{ display: 'block', marginBottom: '5px', color: 'white' }}>
-            <input
-              type="checkbox"
               checked={useClickToMove}
               onChange={(e) => {
                 setUseClickToMove(e.target.checked);
@@ -195,6 +176,25 @@ export default function Menu() {
               style={{ marginRight: '5px' }}
             />
             Click to Move
+          </label>
+          <label style={{ display: 'block', marginBottom: '5px', color: 'white' }}>
+            <input
+              type="checkbox"
+              checked={useVirtualJoystick}
+              onChange={(e) => {
+                setUseVirtualJoystick(e.target.checked);
+                setUseClickToMove(!e.target.checked);
+                window.dispatchEvent(new CustomEvent('toggle-controls', {
+                  detail: {
+                    useVirtualJoystick: e.target.checked,
+                    useClickToMove: !e.target.checked,
+                  }
+                }));
+                setIsOpen(false);
+              }}
+              style={{ marginRight: '5px' }}
+            />
+            Virtual Joystick
           </label>
           
           <h3 style={menuSectionTitleStyle}>Options</h3>

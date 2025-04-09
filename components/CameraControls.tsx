@@ -11,6 +11,8 @@ export default function CameraControls() {
   useEffect(() => {
     if (controlsRef.current) {
       // Set initial target
+      controlsRef.current.target.set(0, 1, 0);
+      controlsRef.current.update();
     }
   }, []);
 

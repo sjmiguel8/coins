@@ -13,8 +13,8 @@ import { MeshStandardMaterial, ShaderMaterial, DoubleSide } from 'three';
 
 export default function ForestScene() {
   const { scene } = useThree()
-  // Use useRef to store coin positions and initialize it
-  const coinsRef = useRef<[number, number, number][]>([])
+  // Use useState to store coin positions
+  const [coinPositions, setCoinPositions] = useState<[number, number, number][]>([]);
   const [meatPositions, setMeatPositions] = useState<[number, number, number][]>([])
 
   // Load forest ground model
@@ -31,8 +31,8 @@ export default function ForestScene() {
       const z = (Math.random() - 0.5) * 40
       newCoins.push([x, 1, z])
     }
-    // Assign new coins to the ref
-    coinsRef.current = newCoins
+    // Initialize coin positions
+    setCoinPositions(newCoins)
   }, []) // Empty dependency array to run only once
 
   const groundMaterial = useMemo(() => {
@@ -59,8 +59,7 @@ export default function ForestScene() {
 
   useEffect(() => {
     const handleCoinDrop = (event: CustomEvent<[number, number, number]>) => {
-      // Add the new coin position to the ref
-      coinsRef.current = [...coinsRef.current, event.detail];
+      setCoinPositions((prevCoinPositions) => [...prevCoinPositions, event.detail]);
     };
 
     const handleMeatDrop = (event: CustomEvent<{position: [number, number, number], attacker: any}>) => {
@@ -130,7 +129,7 @@ export default function ForestScene() {
       <Player startPosition={[0, 1.5, 0]} />
 
       {/* Coins */}
-      {coinsRef.current.map((position, i) => (
+      {coinPositions.map((position, i) => (
         <Coin key={i} position={position} />
       ))}
 
