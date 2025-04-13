@@ -44,6 +44,8 @@ export interface PlayerProps {
   rotation?: [number, number, number]; // Add missing rotation prop
   scale?: [number, number, number]; // Add missing scale prop
   name?: string; // Add missing name prop
+  keepPlayerInBounds?: (position: THREE.Vector3) => void;
+  boundarySize?: number;
 }
 
 // Define a global event to handle navigation requests from outside components
@@ -79,7 +81,9 @@ export default function Player({
   cameraPosition = [0, 7.5, 10], 
   cameraTarget = [0, 1.5, 0],
   onReady,
-  userData = {}
+  userData = {},
+  keepPlayerInBounds,
+  boundarySize
 }: PlayerProps) {
   const playerRef = useRef<RapierRigidBody>(null);
   const playerGroupRef = useRef<THREE.Group>(null);
@@ -440,6 +444,13 @@ export default function Player({
       controls.target.copy(cameraTarget);
       controls.update();
     }
+
+    // Keep the player within the defined boundaries
+    if (keepPlayerInBounds) {
+      const position = new THREE.Vector3(playerPosition.x, playerPosition.y, playerPosition.z);
+      keepPlayerInBounds(position);
+      playerRef.current.setTranslation({ x: position.x, y: playerPosition.y, z: position.z }, true);
+    }
   });
 
   // Method to handle attacking
@@ -620,6 +631,19 @@ export default function Player({
     
     // ...existing movement code...
   })
+
+  // Add userData flag for player identification
+  useEffect(() => {
+    if (playerRef.current) {
+      // Add player identifier to userData
+      (playerRef.current.userData as any).isPlayer = true
+      
+      // Add other userData properties
+      Object.keys(userData).forEach(key => {
+        (playerRef.current!.userData as any)[key] = userData[key];
+      });
+    }
+  }, [userData])
 
   return (
     <>

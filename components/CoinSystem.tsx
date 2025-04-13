@@ -93,7 +93,7 @@ export const CoinComponent: React.FC<{ id: string, position: [number, number, nu
       value,
       initialPosition: new THREE.Vector3(...position)
     })
-  }, [id])
+  }, [id, value])
   
   // Don't render if collected
   if (isCollected) return null

@@ -24,9 +24,37 @@ interface GameContextType {
   eatMeat: (amount?: number) => void;
   lastAttacked: number;
   setLastAttacked: (time: number) => void;
+  incrementCoins: () => void;
+  resetCoins: () => void;
 }
 
-const GameContext = createContext<GameContextType | undefined>(undefined);
+const defaultContext: GameContextType = {
+  coins: 0,
+  addCoins: () => {},
+  setCoinCount: () => {},
+  addCoin: () => {},
+  currentScene: "home",
+  changeScene: () => {},
+  setHealth: () => {},
+  hunger: 100,
+  health: 100,
+  setHunger: () => {},
+  maxHealth: 100,
+  useVirtualJoystick: true,
+  setUseVirtualJoystick: () => {},
+  useClickToMove: false,
+  setUseClickToMove: () => {},
+  isDead: false,
+  respawnCountdown: 5,
+  damagePlayer: () => {},
+  eatMeat: () => {},
+  lastAttacked: 0,
+  setLastAttacked: () => {},
+  incrementCoins: () => {},
+  resetCoins: () => {}
+}
+
+const GameContext = createContext<GameContextType>(defaultContext);
 
 export const useGameContext = () => {
   const context = useContext(GameContext);
@@ -77,6 +105,19 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
   const setUseClickToMove = (useClickToMove: boolean) => {
     setUseClickToMoveState(useClickToMove);
   };
+
+  const incrementCoins = () => {
+    console.log("Incrementing coins")
+    setCoins(prev => {
+      const newValue = prev + 1
+      console.log("New coin count:", newValue)
+      return newValue
+    })
+  }
+
+  const resetCoins = () => {
+    setCoins(0)
+  }
 
   // Handle player death and respawn
   useEffect(() => {
@@ -178,6 +219,8 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
     eatMeat: eatMeat,
     lastAttacked: lastAttacked,
     setLastAttacked: setLastAttacked,
+    incrementCoins: incrementCoins,
+    resetCoins: resetCoins
   }), [coins, currentScene, hunger, health, useVirtualJoystick, useClickToMove, isDead, respawnCountdown, lastAttacked, addCoins, changeScene, setHealth, setHunger, setUseVirtualJoystick, setUseClickToMove, damagePlayer, eatMeat, setLastAttacked]);
 
   return (
@@ -186,3 +229,5 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
     </GameContext.Provider>
   );
 };
+
+export { GameContextProvider as GameProvider };

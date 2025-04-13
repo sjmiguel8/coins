@@ -13,7 +13,7 @@ import { useCoinSystem } from "../CoinSystem";
 import { CoinComponent } from "../CoinSystem";
 
 export default function ForestScene() {
-  const { scene } = useThree()
+  const { scene, camera } = useThree()
   // Use useState to store coin positions
   const [meatPositions, setMeatPositions] = useState<[number, number, number][]>([])
   const { setCoinCount } = useGameContext()
@@ -96,6 +96,14 @@ export default function ForestScene() {
     },
   };
 
+  // Define the boundaries of the forest
+  const boundarySize = 50; // Adjust this value to change the boundary size
+
+  // Function to keep the player within the boundaries
+  const keepPlayerInBounds = (position: THREE.Vector3) => {
+    position.x = Math.max(-boundarySize, Math.min(boundarySize, position.x));
+    position.z = Math.max(-boundarySize, Math.min(boundarySize, position.z));
+  };
 
   return ( 
     <>
@@ -157,9 +165,8 @@ export default function ForestScene() {
       {creaturePositions.map((position, i) => (
         <Creature key={i} position={position} />
       ))}
-
       {/* Player component */}
-      <Player {...playerProps} />
+      <Player {...playerProps} keepPlayerInBounds={keepPlayerInBounds} boundarySize={boundarySize}/>
     </>
   )
 }

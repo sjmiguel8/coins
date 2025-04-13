@@ -1,108 +1,147 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
-import { useCoinSystem } from "./CoinSystem" // Import useCoinSystem
-import React from 'react';
+import { useGameContext } from "./game-context"
 
 interface CoinProps {
-  name: string;
-  image: string;
-  symbol: string;
-  price: number;
-  volume: number;
-  priceChange: number;
-  marketCap: number;
   position: [number, number, number];
+  onCollect?: () => void;
 }
 
-const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceChange, marketCap, position }) => {
+export default function Coin({ position, onCollect }: CoinProps) {
+  const { scene: coinModel } = useGLTF('/coin.glb')
   const coinRef = useRef<THREE.Group>(null)
-  const { collectCoin } = useCoinSystem() // Use collectCoin from CoinSystem
+  const [collected, setCollected] = useState(false)
   
-  // Load the coin model - moved to useEffect to ensure proper loading
-  const { scene: originalScene } = useGLTF('/coin.glb')
-  const [model, setModel] = useState<THREE.Group | null>(null)
+  // Clone the model to avoid issues with multiple instances
+  const model = coinModel.clone()
   
-  // Track collection status
-  const isCollecting = useRef(false)
-  const [isVisible, setIsVisible] = useState(true); // Add a state for visibility
-  
-  // Ensure model is properly cloned and prepared
   useEffect(() => {
-    const clonedScene = originalScene.clone()
-    clonedScene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.castShadow = true
-        object.receiveShadow = true
-      }
-    })
-    setModel(clonedScene)
-  }, [originalScene])
-
-  const handleCollect = () => {
-    if (!isCollecting.current) {
-      collectCoin("coin-" + position[0] + "-" + position[1] + "-" + position[2]);
-      isCollecting.current = true;
-      setIsVisible(false);
+    if (model) {
+      // Configure the coin model
+      model.scale.set(1, 1, 1)
+      model.traverse((node) => {
+        if (node instanceof THREE.Mesh) {
+          node.castShadow = true
+          node.receiveShadow = true
+          // Make the mesh interactive
+          if (node.material) {
+            node.userData.isInteractive = true
+          }
+        }
+      })
     }
-  };
+  }, [model])
 
+  // Rotate the coin
   useFrame((state, delta) => {
-    if (!coinRef.current || !isVisible) return
-
-    // Simple rotation
-    coinRef.current.rotation.y += delta * 2
-    
-    // Simple hover effect
-    const time = state.clock.getElapsedTime()
-    const hoverY = position && position[1] + Math.sin(time * 1.5) * 0.1
-    coinRef.current.position.y = hoverY
-    
-    // Check for player proximity less frequently
-    if (Math.floor(time * 10) % 5 !== 0 || isCollecting.current) return
-    
-    // Find player
-    let playerMesh: THREE.Object3D | undefined = undefined;
-    
-    state.scene.traverse((object: THREE.Object3D) => {
-      if (object.userData && object.userData.isPlayer) {
-        playerMesh = object
-      }
-    })
-    
-    if (playerMesh && coinRef.current) {
-      const coinBox = new THREE.Box3().setFromObject(coinRef.current);
-      const playerBox = new THREE.Box3().setFromObject(playerMesh);
-
-      if (coinBox.intersectsBox(playerBox) && !isCollecting.current) {
-        handleCollect();
-      }
+    if (coinRef.current && !collected) {
+      coinRef.current.rotation.y += delta * 2
+      // Optional floating animation
+      coinRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2) * 0.1
     }
   })
 
-  // Don't render until model is loaded
-  if (!model || !isVisible) return null
+  // Handle coin collection via click
+  const handleClick = (event: THREE.Event) => {
+    (event as any).stopPropagation()
+    if (!collected) {
+      collectCoin()
+    }
+  }
 
+  // Function to handle coin collection
+  const collectCoin = () => {
+    if (collected) return
+    
+    setCollected(true)
+    
+    // Optional collection animation
+    if (coinRef.current) {
+      // Scale down and fade out
+      const animateCollection = () => {
+        if (!coinRef.current) return
+        
+        coinRef.current.scale.multiplyScalar(0.9)
+        
+        if (coinRef.current.scale.x > 0.1) {
+          requestAnimationFrame(animateCollection)
+        } else {
+          // Clean up after animation
+          if (onCollect) {
+            onCollect()
+          }
+          
+          // Hide the coin
+          coinRef.current.visible = false
+        }
+      }
+      
+      animateCollection()
+    } else {
+      // If no ref yet, just hide
+      if (onCollect) onCollect()
+    }
+    
+    // Play collection sound if available
+    const collectSound = document.getElementById('coin-collect-sound') as HTMLAudioElement
+    if (collectSound) collectSound.play()
+  }
+  
+  // Check for player collision
+  useEffect(() => {
+    if (!coinRef.current) return
+    
+    const checkPlayerCollision = () => {
+      if (collected || !coinRef.current) return
+      
+      let playerMesh: THREE.Object3D | null = null
+      const scene = coinRef.current.parent
+      
+      if (!scene) return
+      
+      scene.traverse((object: THREE.Object3D) => {
+        if (object.userData && object.userData.isPlayer) {
+          playerMesh = object
+        }
+      })
+      
+      if (playerMesh) {
+        const coinPos = new THREE.Vector3()
+        const playerPos = new THREE.Vector3()
+        
+        coinRef.current.getWorldPosition(coinPos)
+        playerMesh.getWorldPosition(playerPos)
+        
+        const distance = coinPos.distanceTo(playerPos)
+        
+        // If player is close enough to coin, collect it
+        if (distance < 2) {
+          collectCoin()
+        }
+      }
+    }
+    
+    // Check for collision every frame
+    const intervalId = setInterval(checkPlayerCollision, 100)
+    return () => clearInterval(intervalId)
+  }, [collected])
+  
+  if (collected) return null
+  
   return (
-    <group
-      ref={coinRef}
-      position={position ? [position[0], position[1], position[2]] : [0, 0, 0]}
-      dispose={null}
-      userData={{ isCoin: true }}
-      onClick={(e) => { // Add onClick to also collect on click
-        e.stopPropagation();
-        handleCollect();
-      }}
+    <group 
+      ref={coinRef} 
+      position={position}
+      onClick={handleClick}
     >
       <primitive object={model} />
     </group>
   )
 }
 
-export default Coin
-
-// Preload the model
+// Preload coin model
 useGLTF.preload('/coin.glb')

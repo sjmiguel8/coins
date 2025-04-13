@@ -24,6 +24,7 @@ export default function Creature({ position }: CreatureProps) {
   const [isAggressive, setIsAggressive] = useState(false)
   const [targetPlayer, setTargetPlayer] = useState<THREE.Object3D | null>(null)
   const detectionRange = 8 // Range to detect player
+  const floorY = position[1] // Store the initial Y position as the floor level
   
   // Load the model once and clone it
   const { scene: originalScene } = useGLTF('/base_basic_pbr.glb')
@@ -270,10 +271,19 @@ export default function Creature({ position }: CreatureProps) {
     // Rotate to face movement direction
     creatureRef.current.rotation.y = direction
     
-    // Simple bobbing effect
+    // Simple bobbing effect - but maintain the base floor level
     const time = Date.now() * 0.001
     const bobAmount = Math.sin(time * 2) * 0.05
-    creatureRef.current.position.y = position[1] + bobAmount
+    
+    // Ensure creature stays at floor level plus bobbing effect
+    creatureRef.current.position.y = floorY + bobAmount
+
+    // Keep the creature above the floor
+    if (creatureRef.current) {
+      if (creatureRef.current.position.y < floorY) {
+        creatureRef.current.position.y = floorY;
+      }
+    }
 
     handleRegeneration()
   })
