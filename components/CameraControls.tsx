@@ -3,10 +3,11 @@
 import { OrbitControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
+import '@/utils/extend'; // Add this import to ensure extension is loaded
 
 export default function CameraControls() {
   const { camera, gl } = useThree();
-  const controlsRef = useRef<typeof OrbitControls>(null);
+  const controlsRef = useRef<any>(null);
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -18,7 +19,7 @@ export default function CameraControls() {
 
   return (
     <OrbitControls
-      ref={controlsRef as any}
+      ref={controlsRef}
       enableDamping
       dampingFactor={0.05}
       makeDefault

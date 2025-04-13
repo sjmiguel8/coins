@@ -5,6 +5,8 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 interface GameContextType {
   coins: number;
   addCoins: (amount: number) => void;
+  setCoinCount: (value: number | ((prevValue: number) => number)) => void;
+  addCoin: (amount: number) => void;
   currentScene: string;
   changeScene: (scene: string) => void;
   setHealth: (health: number) => void;
@@ -51,6 +53,12 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
   const [lastAttacked, setLastAttacked] = useState(0);
 
   const addCoins = (amount: number) => {
+    setCoins((prevCoins) => prevCoins + amount);
+  };
+
+  const setCoinCount = setCoins;
+  
+  const addCoin = (amount: number) => {
     setCoins((prevCoins) => prevCoins + amount);
   };
 
@@ -151,6 +159,8 @@ export const GameContextProvider: React.FC<GameContextProviderProps> = ({ childr
   const value = useMemo(() => ({
     coins: coins,
     addCoins: addCoins,
+    setCoinCount: setCoinCount,
+    addCoin: addCoin,
     currentScene: currentScene,
     changeScene: changeScene,
     setHealth: setHealth,

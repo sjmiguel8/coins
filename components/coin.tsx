@@ -5,12 +5,20 @@ import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
+import React from 'react';
 
 interface CoinProps {
+  name: string;
+  image: string;
+  symbol: string;
+  price: number;
+  volume: number;
+  priceChange: number;
+  marketCap: number;
   position: [number, number, number];
 }
 
-export default function Coin({ position }: CoinProps) {
+const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceChange, marketCap, position }) => {
   const coinRef = useRef<THREE.Group>(null)
   const [collected, setCollected] = useState(false)
   const { addCoins } = useGameContext()
@@ -44,7 +52,7 @@ export default function Coin({ position }: CoinProps) {
     
     // Simple hover effect
     const time = state.clock.getElapsedTime()
-    const hoverY = position[1] + Math.sin(time * 1.5) * 0.1
+    const hoverY = position && position[1] + Math.sin(time * 1.5) * 0.1
     coinRef.current.position.y = hoverY
     
     // Check for player proximity less frequently
@@ -83,14 +91,16 @@ export default function Coin({ position }: CoinProps) {
   return (
     <group
       ref={coinRef}
-      position={[position[0], position[1], position[2]]}
+      position={position ? [position[0], position[1], position[2]] : [0, 0, 0]}
       dispose={null}
       userData={{ isCoin: true }}
     >
       <primitive object={model} scale={0.1} castShadow receiveShadow />
     </group>
-  )
-}
+  );
+};
+
+export default Coin;
 
 // Preload the model
 useGLTF.preload('/coin.glb')

@@ -10,46 +10,35 @@ import StoreScene from "./scenes/store-scene"
 import HUD from "./hud"
 import DeathScreen from "./death-screen"
 import { useGameContext } from "./game-context"
+import { useHealthSystem } from "./HealthSystem"
+import { useCoinSystem } from "./CoinSystem"
+import { extend } from "@react-three/fiber"
+import { OrbitControls, TransformControls } from "three-stdlib"
+import CanvasHUD from './CanvasHUD'
+
+// This is important to make R3F aware of these components
+extend({ OrbitControls, TransformControls })
 
 export default function Game() {
-  const { currentScene, isDead, respawnCountdown } = useGameContext()
+  // Regular UI components (outside Canvas)
+  const { isDead } = useGameContext();
 
   return (
-    <>
-      <KeyboardControls
-        map={[
-          { name: "forward", keys: ["ArrowUp", "w", "W"] },
-          { name: "backward", keys: ["ArrowDown", "s", "S"] },
-          { name: "left", keys: ["ArrowLeft", "a", "A"] },
-          { name: "right", keys: ["ArrowRight", "d", "D"] },
-          { name: "jump", keys: ["Space"] },
-          { name: "attack", keys: ["e", "E"] },
-          { name: "scene1", keys: ["1"] },
-          { name: "scene2", keys: ["2"] },
-          { name: "scene3", keys: ["3"] },
-        ]}
-      >
-        <Canvas shadows camera={{ position: [0, 5, 10], fov: 50 }}>
-          <Stats />
-          <ambientLight intensity={0.5} />
-          <directionalLight
-            position={[10, 10, 5]}
-            intensity={1}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-          />
-          <Physics>
-            <Suspense fallback={null}>
-              {currentScene === "forest" && <ForestScene />}
-              {currentScene === "home" && <HomeScene />}
-              {currentScene === "store" && <StoreScene />}
-            </Suspense>
-          </Physics>
-        </Canvas>
-      </KeyboardControls>
+    <div className="relative w-full h-screen">
+      {/* Regular React UI elements (outside Canvas) */}
       <HUD />
-      {isDead && <DeathScreen countdown={respawnCountdown} />}
-    </>
+      {isDead && <DeathScreen countdown={0} />}
+      
+      {/* 3D Canvas */}
+      <Canvas shadows camera={{ position: [0, 5, 12], fov: 50 }}>
+        <Suspense fallback={null}>
+          <Physics>
+            {/* Your 3D scene content */}
+            {/* Canvas-specific HUD elements */}
+            <CanvasHUD />
+          </Physics>
+        </Suspense>
+      </Canvas>
+    </div>
   )
 }

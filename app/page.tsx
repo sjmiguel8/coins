@@ -1,37 +1,39 @@
 "use client"
+import React, { useState, useEffect, Component, Suspense } from 'react';
+// Import extend file first to ensure proper extension of Three.js
+import '@/utils/extend';
+import { Canvas } from '@react-three/fiber';
+import { Physics } from '@react-three/rapier';
+import { KeyboardControls, PointerLockControls } from '@react-three/drei';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { AnimationMixer } from 'three';
+
+import Coin from '@/components/coin';
+import CoinList from '@/components/CoinList';
+import SearchBar from '@/components/SearchBar/SearchBar';
+import ThemeSwitcher from "@/components/ThemeSwitcher";
+import { useTheme } from "next-themes";
+
+import HUD from '../components/hud';
+import MobileControls from '@/components/MobileControls'
+import CameraControls from '@/components/CameraControls';
+import { GameContextProvider as GameProvider, useGameContext } from "@/components/game-context"
+import { getInitialCoins } from "@/lib/utils";
+import ForestScene from "@/components/scenes/forest-scene"
+import HomeScene from "@/components/scenes/home-scene"
+import StoreScene from "@/components/scenes/store-scene"
+import ErrorBoundary from "../components/ErrorBoundary";
+import { initializeThree } from '@/utils/three-setup';
+
 declare global {
   interface Window {
     duckShopOpen?: boolean;
     closeDuckShop?: () => void;
   }
 }
-import { GameContextProvider as GameProvider, useGameContext } from "@/components/game-context"
-import Menu from '../components/Menu'
-import HUD from '../components/hud'
-import MobileControls from '../components/MobileControls' // Add this line
-import { Canvas } from '@react-three/fiber'
-import { Physics } from '@react-three/rapier' // Change this import
-import ForestScene from "@/components/scenes/forest-scene"
-import HomeScene from "@/components/scenes/home-scene"
-import StoreScene from "@/components/scenes/store-scene"
-import { Suspense, useState, useEffect, Component } from "react"
-import { KeyboardControls } from '@react-three/drei'
-import CameraControls from '../components/CameraControls'; // Add this line
 
-class ErrorBoundary extends Component<{children: React.ReactNode, fallback: React.ReactNode}> {
-  state = { hasError: false };
-  
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
+import Menu from '@/components/Menu'
 
 // Define controls ahead of time
 const controls = [
@@ -113,9 +115,34 @@ export default function App() {
   // Ensure client-side rendering for React Three Fiber
   const [ready, setReady] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
-  
+  const [coins, setCoins] = useState<typeof Coin[]>([]);
+  const [search, setSearch] = useState('');
+  const [theme, setTheme] = useState("light");
+  const { systemTheme } = useTheme();
+  useEffect(() => {
+    const getCoins = async () => {
+      const fetchedCoins = await getInitialCoins();
+      setCoins(fetchedCoins);
+    };
+    getCoins();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
+  const filteredCoins = coins.filter(coin =>
+    coin.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+
   // Only render the Canvas on client-side
   useEffect(() => {
+    // Initialize Three.js with extensions
+    initializeThree();
     // Small delay to ensure everything is loaded
     const timer = setTimeout(() => {
       setReady(true);
@@ -153,8 +180,8 @@ export default function App() {
           <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-green-500" />
 
           {/* Canvas layer - only render when client-side ready */}
-          <div className="absolute inset-0"> 
-            {ready ? (
+          {ready ? (
+            <div className="absolute inset-0">
               <ErrorBoundary fallback={<ErrorFallback />}>
                 <Canvas shadows>
                   <Suspense fallback={null}>
@@ -164,10 +191,10 @@ export default function App() {
                   </Suspense>
                 </Canvas>
               </ErrorBoundary>
-            ) : (
-              <LoadingScreen />
-            )}
-          </div>
+            </div>
+          ) : (
+            <LoadingScreen />
+          )}
           
           {/* UI layer that sits on top of the Canvas */}
           {!ready && <LoadingScreen />}

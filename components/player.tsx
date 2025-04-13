@@ -9,6 +9,13 @@ import { useGameContext } from "./game-context";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { AnimationMixer } from 'three';
 import { Vector3 } from 'three'; // Add this line
+import { DODGE_PARAMS } from './CombatSystem';
+import './HealthSystem';
+import CanvasHUD from '../components/CanvasHUD';
+
+import HealthBar from './HealthBar';
+import { extend } from "@react-three/fiber"
+import { OrbitControls, TransformControls } from "three-stdlib"
 
 // Move these outside the component to prevent re-creation on every render
 const lastMovementDirection = new THREE.Vector3(0, 0, -1);
@@ -61,6 +68,9 @@ interface GameContextType {
   setLastAttacked: (time: number) => void;
   eatMeat: (hungerPoints: number) => void;
 }
+
+const PLAYER_ID = 'player-main'
+const PLAYER_MAX_HEALTH = 100
 
 export default function Player({ 
   position, 
@@ -518,41 +528,155 @@ export default function Player({
     }
   }, [getKeys, handleAttack]);
 
-  return (
-    <RigidBody
-      ref={playerRef}
-      colliders={false}
-      position={
-        Array.isArray(position)
-          ? (position as [number, number, number])
-          : (position as Vector3)
+  // Register player with health system
+  useEffect(() => {
+    registerEntity({
+      id: PLAYER_ID,
+      type: 'player',
+      maxHealth: PLAYER_MAX_HEALTH,
+      currentHealth: PLAYER_MAX_HEALTH,
+      position: new THREE.Vector3(...position)
+    })
+    
+    if (onReady) onReady()
+  }, [])
+  
+  // Handle keyboard controls for combat
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.code) {
+        case 'KeyF':
+          performLightAttack()
+          break
+        case 'KeyG':
+          performHeavyAttack()
+          break
+        case 'KeyQ':
+          // Horizontal dodge - calculate direction based on camera
+          if (camera) { // Add this check
+            const direction = new THREE.Vector3(-1, 0, 0)
+            direction.applyQuaternion(camera.quaternion)
+            direction.y = 0 // Keep horizontal
+            direction.normalize()
+            performDodge(direction)
+          }
+          break
+        case 'KeyE':
+          // Horizontal dodge - calculate direction based on camera
+          if (camera) { // Add this check
+            const directionRight = new THREE.Vector3(1, 0, 0)
+            directionRight.applyQuaternion(camera.quaternion)
+            directionRight.y = 0 // Keep horizontal
+            directionRight.normalize()
+            performDodge(directionRight)
+          }
+          break
       }
-      friction={0.2}
-      linearDamping={4}
-      angularDamping={5}
-      lockRotations
-      type="dynamic"
-      mass={1}
-      restitution={0.1}
-      gravityScale={1.5}
-      userData={userData}
-    >
-      <group ref={playerGroupRef}>
-        <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />
-        {model && (
-          <primitive 
-            object={model} 
-            scale={[1, 1, 1]}
-            position={[0, -0.5, 0]}
-            castShadow 
-            receiveShadow 
-            userData={{ isPlayer: true }} 
-          />
-        )}
-      </group>
-    </RigidBody>
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+
+  const [isDodging, setIsDodging] = useState(false)
+  const [dodgeDirection, setDodgeDirection] = useState<THREE.Vector3 | null>(null)
+  const rigidBodyRef = useRef<RapierRigidBody>(null)
+
+  const performLightAttack = () => {
+    console.log('Light Attack!')
+  }
+
+  const performHeavyAttack = () => {
+    console.log('Heavy Attack!')
+  }
+
+  const performDodge = (direction: THREE.Vector3) => {
+    setIsDodging(true)
+    setDodgeDirection(direction)
+
+    // Apply dodge effect for a short duration
+    setTimeout(() => {
+      setIsDodging(false)
+      setDodgeDirection(null)
+    }, DODGE_PARAMS.DURATION)
+  }
+  
+  // Handle movement and physics
+  useFrame(() => {
+    if (!playerRef.current || !rigidBodyRef.current) return
+    
+    // Update player position in health system
+    const worldPosition = new THREE.Vector3()
+    playerGroupRef.current?.getWorldPosition(worldPosition)
+    updateEntityPosition(PLAYER_ID, worldPosition)
+    
+    // Apply dodge movement if dodging
+    if (isDodging && dodgeDirection) {
+      // Apply impulse in dodge direction
+      const impulse = dodgeDirection.clone().multiplyScalar(DODGE_PARAMS.DISTANCE * 20)
+      playerRef.current.applyImpulse({ x: impulse.x, y: 0, z: impulse.z }, true)
+    }
+    
+    // ...existing movement code...
+  })
+
+  return (
+    <>
+      <RigidBody
+        ref={playerRef}
+        colliders={false}
+        position={
+          Array.isArray(position)
+            ? (position as [number, number, number])
+            : (position as Vector3)
+        }
+        friction={0.2}
+        linearDamping={4}
+        angularDamping={5}
+        lockRotations
+        type="dynamic"
+        mass={1}
+        restitution={0.1}
+        gravityScale={1.5}
+        userData={userData}
+      >
+        <group ref={playerGroupRef}>
+          <CapsuleCollider args={[0.5, 0.5]} friction={0.5} restitution={0} density={1.2} />
+          {model && (
+            <primitive 
+              object={model} 
+              scale={[1, 1, 1]}
+              position={[0, -0.5, 0]}
+              castShadow 
+              receiveShadow 
+              userData={{ isPlayer: true }} 
+            />
+          )}
+        </group>
+      </RigidBody>
+      
+      {/* Display health bar above player */}
+      <HealthBar entityId={PLAYER_ID} offset={[0, 2.5, 0]} />
+    </>
   );
 }
 
 // Update preload path
 useGLTF.preload('/bob_the_builder_capoeira_rig_animation.glb');
+let entities: { [id: string]: any } = {};
+
+function registerEntity(entity: { id: string; type: string; maxHealth: number; currentHealth: number; position: THREE.Vector3; }) {
+  entities[entity.id] = {
+    ...entity,
+    health: entity.currentHealth,
+    maxHealth: entity.maxHealth,
+  };
+}
+
+function updateEntityPosition(id: string, position: THREE.Vector3) {
+  if (entities[id]) {
+    entities[id].position = position;
+  }
+}
+

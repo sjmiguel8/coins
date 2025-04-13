@@ -6,8 +6,15 @@ import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
 import Player, { type PlayerProps } from "../player"
 import * as THREE from "three"
-import NavigationSystem from "../NavigationSystem" // Add this
-import { Mesh, ShaderMaterial, DoubleSide, Vector3 } from 'three';
+import NavigationSystem from "../NavigationSystem"
+import { Mesh, ShaderMaterial, DoubleSide, Vector3 } from 'three'
+import Enemy from "../Enemy"
+import { CoinComponent } from "../CoinSystem"
+import HUD from "../../components/hud"
+import CanvasHUD from '../CanvasHUD'
+import { useHealthSystem } from "../HealthSystem"
+// import { useCoinSystem } from "./coin-system"
+import { extend } from "@react-three/fiber"
 
 interface GroundProps {
   [key: string]: any;
@@ -33,9 +40,12 @@ const Ground: React.FC<GroundProps> = (props) => {
   )
 }
 
+import { OrbitControls } from "@react-three/drei"
+
 export default function HomeScene() {
   // This component is responsible for rendering the home scene
-  const { scene, camera, controls } = useThree() 
+  const { scene, camera } = useThree() 
+
 
   useEffect(() => {
     console.log("Camera near:", camera.near, "far:", camera.far);
@@ -121,7 +131,6 @@ export default function HomeScene() {
       {/* Ground plane for physics */}
       <Ground />
 
-
       {/* Visual ground model - no physics */}
       <primitive  
         object={skyCastleScene.clone()}
@@ -133,6 +142,20 @@ export default function HomeScene() {
       
       {/* Player component */}
       <Player {...playerProps} />
+      
+      {/* Enemy instances */}
+      <Enemy id="enemy-1" position={[5, 1, -5]} maxHealth={40} />
+      <Enemy id="enemy-2" position={[-8, 1, -8]} maxHealth={60} />
+      <Enemy id="enemy-3" position={[8, 1, -12]} maxHealth={80} />
+      
+      {/* Add some collectible coins */}
+      <CoinComponent id="coin-1" position={[3, 1, -3]} />
+      <CoinComponent id="coin-2" position={[-4, 1, -7]} />
+      <CoinComponent id="coin-3" position={[7, 1, -9]} />
+      <CoinComponent id="coin-4" position={[0, 1, -12]} value={5} />
+      
+      {/* Remove HUD from here as it's now handled in the Game component */}
+      <CanvasHUD />
     </>
   )
 }
