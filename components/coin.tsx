@@ -28,23 +28,30 @@ const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceCh
   
   // Track collection status
   const isCollecting = useRef(false)
+  const [isVisible, setIsVisible] = useState(true); // Add a state for visibility
   
   // Ensure model is properly cloned and prepared
   useEffect(() => {
     const clonedScene = originalScene.clone()
-    setModel(clonedScene)
-    
-    // Make sure the model is visible
     clonedScene.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.castShadow = true
         object.receiveShadow = true
       }
     })
+    setModel(clonedScene)
   }, [originalScene])
 
+  const handleCollect = () => {
+    if (!isCollecting.current) {
+      collectCoin("coin-" + position[0] + "-" + position[1] + "-" + position[2]);
+      isCollecting.current = true;
+      setIsVisible(false);
+    }
+  };
+
   useFrame((state, delta) => {
-    if (!coinRef.current) return
+    if (!coinRef.current || !isVisible) return
 
     // Simple rotation
     coinRef.current.rotation.y += delta * 2
@@ -67,24 +74,17 @@ const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceCh
     })
     
     if (playerMesh && coinRef.current) {
-      const coinPos = new THREE.Vector3()
-      const playerPos = new THREE.Vector3()
-      
-      coinRef.current.getWorldPosition(coinPos)
-      if (playerMesh) {
-        (playerMesh as THREE.Object3D).getWorldPosition(playerPos)
-      }
-      const distance = coinPos.distanceTo(playerPos)
-      if (distance < 1.5 && !isCollecting.current) {
-        // Emit event to collect the coin
-        collectCoin("coin-" + position[0] + "-" + position[1] + "-" + position[2]) // Collect the coin using its ID
-        isCollecting.current = true
+      const coinBox = new THREE.Box3().setFromObject(coinRef.current);
+      const playerBox = new THREE.Box3().setFromObject(playerMesh);
+
+      if (coinBox.intersectsBox(playerBox) && !isCollecting.current) {
+        handleCollect();
       }
     }
   })
 
   // Don't render until model is loaded
-  if (!model) return null
+  if (!model || !isVisible) return null
 
   return (
     <group
@@ -92,13 +92,17 @@ const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceCh
       position={position ? [position[0], position[1], position[2]] : [0, 0, 0]}
       dispose={null}
       userData={{ isCoin: true }}
+      onClick={(e) => { // Add onClick to also collect on click
+        e.stopPropagation();
+        handleCollect();
+      }}
     >
-      <primitive object={model} scale={0.1} castShadow receiveShadow />
+      <primitive object={model} />
     </group>
-  );
-};
+  )
+}
 
-export default Coin;
+export default Coin
 
 // Preload the model
 useGLTF.preload('/coin.glb')
