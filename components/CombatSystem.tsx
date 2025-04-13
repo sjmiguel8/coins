@@ -24,6 +24,10 @@ interface CombatState {
   performDodge: (direction: THREE.Vector3) => void
   resetAttack: () => void
   resetDodge: () => void
+  
+  // Directional attack
+  attackDirection: THREE.Vector3 | null
+  setAttackDirection: (direction: THREE.Vector3 | null) => void
 }
 
 export const useCombatStore = create<CombatState>()(
@@ -34,6 +38,7 @@ export const useCombatStore = create<CombatState>()(
     isDodging: false,
     dodgeDirection: null,
     lastDodgeTime: 0,
+    attackDirection: null,
     
     performLightAttack: () => {
       const now = Date.now()
@@ -89,7 +94,11 @@ export const useCombatStore = create<CombatState>()(
       }, DODGE_DURATION)
     },
     
-    resetAttack: () => set({ isAttacking: false, attackType: null }),
+    setAttackDirection: (direction) => {
+      set({ attackDirection: direction })
+    },
+    
+    resetAttack: () => set({ isAttacking: false, attackType: null, attackDirection: null }),
     resetDodge: () => set({ isDodging: false, dodgeDirection: null }),
   }))
 )

@@ -124,7 +124,7 @@ export default function Player({
   }, [initialHunger]);
 
   // Function to handle attacking
-  const attack = () => {
+  const attack = (attackDirection: string) => {
     if (!playerRef.current) return;
 
     const playerPosition = playerRef.current.translation();
@@ -138,15 +138,36 @@ export default function Player({
         const distance = attackPosition.distanceTo(creaturePosition);
 
         if (distance <= attackRange) {
-          // Deal damage to the creature
-          const damageEvent = new CustomEvent('creature-damage', {
-            detail: {
-              target: object,
-              damage: attackDamage,
-              attacker: playerRef.current
-            }
-          });
-          window.dispatchEvent(damageEvent);
+          // Check attack direction
+          let isHit = false;
+          switch (attackDirection) {
+            case 'forward':
+              isHit = creaturePosition.z < playerPosition.z;
+              break;
+            case 'backward':
+              isHit = creaturePosition.z > playerPosition.z;
+              break;
+            case 'left':
+              isHit = creaturePosition.x < playerPosition.x;
+              break;
+            case 'right':
+              isHit = creaturePosition.x > playerPosition.x;
+              break;
+            default:
+              break;
+          }
+
+          if (isHit) {
+            // Deal damage to the creature
+            const damageEvent = new CustomEvent('creature-damage', {
+              detail: {
+                target: object,
+                damage: 10, // Example damage value
+                attacker: playerRef.current,
+              },
+            });
+            window.dispatchEvent(damageEvent);
+          }
         }
       }
     });
@@ -178,7 +199,7 @@ export default function Player({
     const keys = getKeys();
     if (keys.attack && !isAttacking) {
       setIsAttacking(true);
-      attack();
+      attack("forward"); // Provide a default attack direction
       setTimeout(() => setIsAttacking(false), 500); // Attack cooldown
     }
   }, [getKeys, isAttacking, attack]);
@@ -198,6 +219,18 @@ export default function Player({
           if (node.isMesh) {
             node.castShadow = true;
             node.receiveShadow = true;
+          }
+        });
+
+        // Set material to double side
+        loadedModel.traverse((child: any) => {
+          if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((material: THREE.Material) => {
+              if (material) {
+                material.side = THREE.DoubleSide;
+              }
+            });
           }
         });
 
@@ -644,6 +677,19 @@ export default function Player({
       });
     }
   }, [userData])
+
+  useEffect(() => {
+    const handlePlayerAttack = (event: CustomEvent<{ direction: string }>) => {
+      const attackDirection = event.detail.direction;
+      attack(attackDirection);
+    };
+
+    window.addEventListener('player-attack', handlePlayerAttack as EventListener);
+
+    return () => {
+      window.removeEventListener('player-attack', handlePlayerAttack as EventListener);
+    };
+  }, []);
 
   return (
     <>

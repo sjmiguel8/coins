@@ -5,12 +5,16 @@ import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import { useGameContext } from "./game-context"
+import { Text } from "@react-three/drei"
+import { useRapier, RigidBody } from '@react-three/rapier'
 
 interface CreatureProps {
   position: [number, number, number];
 }
 
 export default function Creature({ position }: CreatureProps) {
+  
+
   const creatureRef = useRef<THREE.Group>(null)
   const [direction, setDirection] = useState(() => Math.random() * Math.PI * 2)
   const [health, setHealth] = useState(100)
@@ -25,7 +29,12 @@ export default function Creature({ position }: CreatureProps) {
   const [targetPlayer, setTargetPlayer] = useState<THREE.Object3D | null>(null)
   const detectionRange = 8 // Range to detect player
   const floorY = position[1] // Store the initial Y position as the floor level
-  
+  const [damageText, setDamageText] = useState<number | null>(null)
+  const [damageTextPosition, setDamageTextPosition] = useState<[number, number, number]>([0, 0, 0])
+  const [isHitEffect, setIsHitEffect] = useState(false);
+  const rigidBodyRef = useRef<React.ElementRef<typeof RigidBody>>(null)
+  const rapier = useRapier()
+
   // Load the model once and clone it
   const { scene: originalScene } = useGLTF('/base_basic_pbr.glb')
   const modelRef = useRef<THREE.Object3D>(null)
@@ -77,13 +86,33 @@ export default function Creature({ position }: CreatureProps) {
       const newHealth = Math.max(prevHealth - damage, 0);
       setShowHealthBar(true);
       setLastAttacked(Date.now());
+      
+      // Show damage text with random offset for visibility
+      const creaturePos = new THREE.Vector3();
+      if (creatureRef.current) {
+        creatureRef.current.getWorldPosition(creaturePos);
+      }
+      const randomX = (Math.random() - 0.5) * 0.5;
+      const randomZ = (Math.random() - 0.5) * 0.5;
+      setDamageTextPosition([
+        creaturePos.x + randomX, 
+        creaturePos.y + 2, 
+        creaturePos.z + randomZ
+      ]);
+      setDamageText(damage);
+      
+      // Hide damage text after 1 second
+      setTimeout(() => {
+        setDamageText(null);
+      }, 1000);
+      
       if (newHealth === 0) {
         handleDeath(attacker);
       }
       return newHealth;
     });
   };
-
+  
   // Function to handle health regeneration
   const handleRegeneration = () => {
     if (Date.now() - lastAttacked > 5000 && health < 100) {
@@ -106,7 +135,6 @@ export default function Creature({ position }: CreatureProps) {
   };
 
   // Function to drop loot
-
   const dropLoot = (attacker: any) => {
     if (Math.random() < 0.5) {
       const coinPosition = [
@@ -117,7 +145,7 @@ export default function Creature({ position }: CreatureProps) {
       // Dispatch custom event for coin drop
       window.dispatchEvent(new CustomEvent('coin-drop', { detail: { position: coinPosition, attacker: attacker } }));
     }
-  if (Math.random() < 0.5) {
+    if (Math.random() < 0.5) {
       const meatPosition = [
         position[0] + (Math.random() - 0.5) * 2,
         position[1] + 0.5,
@@ -130,7 +158,7 @@ export default function Creature({ position }: CreatureProps) {
 
   useEffect(() => {
     const handleCreatureDamage = (event: CustomEvent<{ target: THREE.Object3D; damage: number; attacker: any }>) => {
-      if (event.detail.target === modelRef.current) {
+      if (event.detail.target === creatureRef.current) {
         handleDamage(event.detail.damage, event.detail.attacker);
       }
     };
@@ -139,6 +167,64 @@ export default function Creature({ position }: CreatureProps) {
 
     return () => {
       window.removeEventListener('creature-damage', handleCreatureDamage as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handlePlayerAttack = (event: CustomEvent<{ direction: string }>) => {
+      if (!creatureRef.current) return;
+
+      const attackDirection = event.detail.direction;
+      const creaturePos = new THREE.Vector3();
+      creatureRef.current.getWorldPosition(creaturePos);
+
+      // Get player position from scene
+      let playerPos = new THREE.Vector3();
+      const gameScene = modelRef.current?.parent as THREE.Scene;
+      if (!gameScene) return;
+
+      gameScene.traverse((object: THREE.Object3D) => {
+        if (object.userData && object.userData.isPlayer) {
+          object.getWorldPosition(playerPos);
+        }
+      });
+
+      const distance = creaturePos.distanceTo(playerPos);
+
+      if (distance <= attackRange) {
+        // Check attack direction
+        let isHit = false;
+        switch (attackDirection) {
+          case 'forward':
+            isHit = creaturePos.z < playerPos.z;
+            break;
+          case 'backward':
+            isHit = creaturePos.z > playerPos.z;
+            break;
+          case 'left':
+            isHit = creaturePos.x < playerPos.x;
+            break;
+          case 'right':
+            isHit = creaturePos.x > playerPos.x;
+            break;
+          default:
+            break;
+        }
+
+        if (isHit) {
+          handleDamage(attackDamage, null);
+          setIsHitEffect(true);
+          setTimeout(() => {
+            setIsHitEffect(false);
+          }, 300);
+        }
+      }
+    };
+
+    window.addEventListener('player-attack', handlePlayerAttack as EventListener);
+
+    return () => {
+      window.removeEventListener('player-attack', handlePlayerAttack as EventListener);
     };
   }, []);
 
@@ -206,6 +292,7 @@ export default function Creature({ position }: CreatureProps) {
     const checkInterval = setInterval(checkForPlayer, 1000)
     return () => clearInterval(checkInterval)
   }, [])  
+  
   // Modified useFrame logic to chase player when aggressive
   useFrame((state, delta) => {
     if (!creatureRef.current || isDead) return
@@ -288,26 +375,65 @@ export default function Creature({ position }: CreatureProps) {
     handleRegeneration()
   })
 
+  useFrame(() => {
+    if (!rigidBodyRef.current) return
+
+    const num = 2
+    const impulse = { x: num * Math.random() - num / 2, y: 2, z: num * Math.random() - num / 2 }
+    rigidBodyRef.current.applyImpulse(impulse, true)
+  })
+
   if (isDead) return null
 
   return (
-    <group 
-      ref={creatureRef}
-      position={[position[0], position[1], position[2]]} 
-      userData={{ isCreature: true }}
-    >
-      {showHealthBar && (
-        <mesh position={[0, 2, 0]}>
-          <planeGeometry args={[2, 0.3]} />
-          <meshBasicMaterial color="red" transparent opacity={0.8} />
-          <mesh scale={[health / 100, 1, 1]} position={[-1 + health / 200, 0, 0]}>
+    <RigidBody ref={rigidBodyRef} colliders="ball" restitution={0.2} friction={1} linearDamping={0.9}>
+      <mesh castShadow>
+        <sphereGeometry />
+        <meshStandardMaterial />
+      </mesh>
+      <group 
+        ref={creatureRef}
+        position={[position[0], position[1], position[2]]} 
+        userData={{ isCreature: true }}
+      >
+        {/* Health bar that shows when creature is damaged */}
+        {showHealthBar && (
+          <mesh position={[0, 2, 0]}>
             <planeGeometry args={[2, 0.3]} />
-            <meshBasicMaterial color="green" transparent opacity={0.8} />
+            <meshBasicMaterial color="red" transparent opacity={0.8} />
+            <mesh scale={[health / 100, 1, 1]} position={[-1 + health / 200, 0, 0]}>
+              <planeGeometry args={[2, 0.3]} />
+              <meshBasicMaterial color="green" transparent opacity={0.8} />
+            </mesh>
           </mesh>
-        </mesh>
-      )}
-      {modelRef.current && <primitive object={modelRef.current} />}
-    </group>
+        )}
+        
+        {/* Damage text that appears when creature is hit */}
+        {damageText !== null && (
+          <Text
+            position={[
+              damageTextPosition[0] - position[0],
+              damageTextPosition[1] - position[1], 
+              damageTextPosition[2] - position[2]
+            ]}
+            color="red"
+            fontSize={0.5}
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+          >
+            {`-${damageText}`}
+          </Text>
+        )}
+        
+        {modelRef.current && (
+          <primitive
+            object={modelRef.current}
+            // Add hit effect
+          />
+        )}
+      </group>
+    </RigidBody>
   )
 }
 

@@ -1,11 +1,11 @@
 import { useRef, useEffect, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { useHealthSystem } from './HealthSystem'
 import { useCoinSystem } from './CoinSystem'
 import { useCombatStore } from './CombatSystem'
 import HealthBar from './HealthBar'
 import * as THREE from 'three'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { Text } from '@react-three/drei'
 
 interface EnemyProps {
   id: string
@@ -29,6 +29,8 @@ const Enemy: React.FC<EnemyProps> = ({
   const isAttacking = useCombatStore((state) => state.isAttacking)
   const attackType = useCombatStore((state) => state.attackType)
   const [isHit, setIsHit] = useState(false)
+  const [damageText, setDamageText] = useState<number | null>(null)
+  const [damageTextPosition, setDamageTextPosition] = useState<[number, number, number]>([0, 0, 0])
   
   const isAlive = entities[id]?.isAlive !== false
   
@@ -53,37 +55,15 @@ const Enemy: React.FC<EnemyProps> = ({
     }
   }, [isAlive, id, entities])
   
-  // Check for attacks in proximity
-  useFrame(({ camera }) => {
-    if (!enemyRef.current || !isAttacking || !isAlive) return
-    
-    const playerDirection = new THREE.Vector3(0, 0, -1)
-    playerDirection.applyQuaternion(camera.quaternion)
-    
-    const enemyPosition = new THREE.Vector3()
-    enemyRef.current.getWorldPosition(enemyPosition)
-    
-    const cameraPosition = camera.position.clone()
-    const distanceToEnemy = cameraPosition.distanceTo(enemyPosition)
-    
-    // Check if player is facing the enemy and close enough
-    if (distanceToEnemy < (attackType === 'heavy' ? 4 : 3)) {
-      const directionToEnemy = enemyPosition.clone().sub(cameraPosition).normalize()
-      const dotProduct = directionToEnemy.dot(playerDirection)
-      
-      // If player is facing the enemy (dot product is positive and large enough)
-      if (dotProduct > 0.7) {
-        if (!isHit) {
-          const damage = attackType === 'heavy' ? 25 : 10
-          damageEntity(id, damage)
-          setIsHit(true)
-          
-          // Show hit effect
-          setTimeout(() => setIsHit(false), 300)
-        }
-      }
+  // Show damage text animation
+  useEffect(() => {
+    if (damageText !== null) {
+      const timer = setTimeout(() => {
+        setDamageText(null)
+      }, 1000)
+      return () => clearTimeout(timer)
     }
-  })
+  }, [damageText])
   
   if (!isAlive) return null
   
@@ -115,6 +95,23 @@ const Enemy: React.FC<EnemyProps> = ({
           )}
           <CuboidCollider args={[0.5, 1, 0.5]} />
           <HealthBar entityId={id} offset={[0, 2.5, 0]} />
+          
+          {damageText !== null && (
+            <Text
+              position={[
+                damageTextPosition[0] - position[0],
+                damageTextPosition[1] - position[1], 
+                damageTextPosition[2] - position[2]
+              ]}
+              color="red"
+              fontSize={0.5}
+              anchorX="center"
+              anchorY="middle"
+              fontWeight="bold"
+            >
+              {`-${damageText}`}
+            </Text>
+          )}
         </group>
       </RigidBody>
     </group>
