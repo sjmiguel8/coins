@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { useThree } from "@react-three/fiber"
 import { RigidBody } from "@react-three/rapier"
 import { useGLTF } from "@react-three/drei"
@@ -18,6 +18,16 @@ export default function ForestScene() {
   const [meatPositions, setMeatPositions] = useState<[number, number, number][]>([])
   const { setCoinCount } = useGameContext()
   const { addCoin } = useCoinSystem();
+  const [treePositions, setTreePositions] = useState<[number, number, number][]>([]);
+  const [treeData, setTreeData] = useState<
+    {
+      position: [number, number, number];
+      scale: number;
+      rotation: number;
+    }[]
+  >([]);
+  const [creaturePositions, setCreaturePositions] = useState<[number, number, number][]>([]);
+  const initialPositionsGenerated = useRef(false);
 
   // Load forest ground model
   const { scene: forestGroundScene } = useGLTF('/low_poly_forest.glb') // Changed to the low poly forest
@@ -39,14 +49,41 @@ export default function ForestScene() {
     };
   }, []);
 
-  const treePositions = useMemo(() => {
-    const positions: [number, number, number][] = [];
-    for (let i = 0; i < 20; i++) {
+  const generateInitialPositions = () => {
+    if (initialPositionsGenerated.current) {
+      return;
+    }
+
+    const initialTreeData: {
+      position: [number, number, number];
+      scale: number;
+      rotation: number;
+    }[] = [];
+    const maxTrees = 20; // Set the maximum number of trees
+    for (let i = 0; i < maxTrees; i++) {
       const x = (Math.random() - 0.5) * 80;
       const z = (Math.random() - 0.5) * 80;
-      positions.push([x, 0, z]);
+      const position: [number, number, number] = [x, 0, z];
+      const scale = 0.8 + Math.random() * 0.4;
+      const rotation = Math.random() * Math.PI * 2;
+      initialTreeData.push({ position, scale, rotation });
     }
-    return positions;
+    setTreeData(initialTreeData);
+
+    const initialCreaturePositions: [number, number, number][] = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 10 + Math.random() * 15;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      initialCreaturePositions.push([x, 0.5, z]);
+    }
+    setCreaturePositions(initialCreaturePositions);
+    initialPositionsGenerated.current = true;
+  };
+
+  useEffect(() => {
+    generateInitialPositions();
   }, []);
 
   // Define player props correctly
@@ -83,17 +120,14 @@ export default function ForestScene() {
         receiveShadow
       />
 
-      {/* Trees - reduced number */}
-      {treePositions.map((position, i) => {
-        const scale = 0.8 + Math.random() * 0.4
-        const rotation = Math.random() * Math.PI * 2
-
+      {/* Trees */}
+      {treeData.map((tree, i) => {
         return (
           <group
             key={i}
-            position={position}
-            scale={[scale, scale, scale]}
-            rotation={[0, rotation, 0]}
+            position={tree.position}
+            scale={[tree.scale, tree.scale, tree.scale]}
+            rotation={[0, tree.rotation, 0]}
           >
             <primitive
               object={treeScene.clone()}
@@ -102,7 +136,7 @@ export default function ForestScene() {
               castShadow
             />
           </group>
-        )
+        );
       })}
       {/* Coins */}
       {Array.from({ length: 20 }).map((_, i) => {
@@ -120,13 +154,9 @@ export default function ForestScene() {
       ))}
 
       {/* Creatures */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const angle = Math.random() * Math.PI * 2
-        const radius = 10 + Math.random() * 15
-        const x = Math.cos(angle) * radius
-        const z = Math.sin(angle) * radius
-        return <Creature key={i} position={[x, 0.5, z]} />
-      })}
+      {creaturePositions.map((position, i) => (
+        <Creature key={i} position={position} />
+      ))}
 
       {/* Player component */}
       <Player {...playerProps} />

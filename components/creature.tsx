@@ -56,9 +56,14 @@ export default function Creature({ position }: CreatureProps) {
   useEffect(() => {
     const changeDirection = () => {
       setDirection(prev => {
-        const randomAngle = Math.random() * Math.PI - Math.PI / 2
-        return prev + randomAngle * 0.8
-      })
+        // Generate a random angle between -PI/4 and PI/4 (45 degrees)
+        const randomAngle = (Math.random() - 0.5) * Math.PI / 2;
+        
+        // Adjust the influence of the random angle (0.5 means 50% influence)
+        const influence = 0.5;
+        
+        return prev + randomAngle * influence;
+      });
     }
     
     const intervalId = setInterval(changeDirection, 2000 + Math.random() * 3000)

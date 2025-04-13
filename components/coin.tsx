@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react"
 import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
-import { useGameContext } from "./game-context"
+import { useCoinSystem } from "./CoinSystem" // Import useCoinSystem
 import React from 'react';
 
 interface CoinProps {
@@ -20,8 +20,7 @@ interface CoinProps {
 
 const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceChange, marketCap, position }) => {
   const coinRef = useRef<THREE.Group>(null)
-  const [collected, setCollected] = useState(false)
-  const { addCoins } = useGameContext()
+  const { collectCoin } = useCoinSystem() // Use collectCoin from CoinSystem
   
   // Load the coin model - moved to useEffect to ensure proper loading
   const { scene: originalScene } = useGLTF('/coin.glb')
@@ -45,7 +44,7 @@ const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceCh
   }, [originalScene])
 
   useFrame((state, delta) => {
-    if (collected || !coinRef.current) return
+    if (!coinRef.current) return
 
     // Simple rotation
     coinRef.current.rotation.y += delta * 2
@@ -78,15 +77,14 @@ const Coin: React.FC<CoinProps> = ({ name, image, symbol, price, volume, priceCh
       const distance = coinPos.distanceTo(playerPos)
       if (distance < 1.5 && !isCollecting.current) {
         // Emit event to collect the coin
-        addCoins(1)
-        setCollected(true)
+        collectCoin("coin-" + position[0] + "-" + position[1] + "-" + position[2]) // Collect the coin using its ID
         isCollecting.current = true
       }
     }
   })
 
   // Don't render until model is loaded
-  if (collected || !model) return null
+  if (!model) return null
 
   return (
     <group

@@ -8,6 +8,7 @@ export interface Coin {
   position: THREE.Vector3
   value: number
   isCollected: boolean
+  initialPosition: THREE.Vector3 // Add initialPosition
 }
 
 interface CoinSystemState {
@@ -32,7 +33,8 @@ export const useCoinSystem = create<CoinSystemState>()(
           ...state.coins,
           [coin.id]: {
             ...coin,
-            isCollected: false
+            isCollected: false,
+            initialPosition: coin.position // Store initial position
           }
         }
       }))
@@ -81,13 +83,15 @@ export const CoinComponent: React.FC<{ id: string, position: [number, number, nu
 }) => {
   const { registerCoin, collectCoin, coins } = useCoinSystem()
   const isCollected = coins[id]?.isCollected || false
-  
+  const initialPosition = coins[id]?.initialPosition?.toArray() as [number, number, number] || position; // Get initial position
+
   // Register coin on mount
   React.useEffect(() => {
     registerCoin({
       id,
       position: new THREE.Vector3(...position),
-      value
+      value,
+      initialPosition: new THREE.Vector3(...position)
     })
   }, [id])
   
@@ -96,7 +100,7 @@ export const CoinComponent: React.FC<{ id: string, position: [number, number, nu
   
   return (
     <mesh
-      position={position}
+      position={initialPosition} // Use initialPosition
       onClick={(e) => {
         e.stopPropagation()
         collectCoin(id)
