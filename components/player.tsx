@@ -16,6 +16,7 @@ import CanvasHUD from '../components/CanvasHUD';
 import HealthBar from './HealthBar';
 import { extend } from "@react-three/fiber"
 import { OrbitControls, TransformControls } from "three-stdlib"
+import gsap from 'gsap';
 
 // Move these outside the component to prevent re-creation on every render
 const lastMovementDirection = new THREE.Vector3(0, 0, -1);
@@ -488,7 +489,7 @@ export default function Player({
 
   // Method to handle attacking
   const handleAttack = () => {
-    if (isDead) return
+    if (isDead || isSwinging) return
 
     // Define attack cooldown
     const attackCooldown = 500; // Cooldown in milliseconds
@@ -503,6 +504,8 @@ export default function Player({
     
     const playerPosition = playerRef.current.translation()
     const attackPosition = new THREE.Vector3(playerPosition.x, playerPosition.y, playerPosition.z)
+
+    swingAxe();
 
     scene.traverse((object: THREE.Object3D) => {
       if (object.userData && object.userData.isCreature) {
@@ -691,6 +694,68 @@ export default function Player({
     };
   }, []);
 
+  const weapon = useGLTF('/medieval_axe.glb');
+  const weaponRef = useRef<THREE.Object3D>(null);
+
+  useEffect(() => {
+    if (!playerRef.current || !playerGroupRef.current) return;
+
+    // Find the attachment point (e.g., "RightHand") - adjust name if needed
+    const hand = playerGroupRef.current.getObjectByName('RightHand');
+
+    if (hand && weapon.scene) {
+      weaponRef.current = weapon.scene;
+      hand.add(weapon.scene);
+
+      // Adjust weapon position, rotation, and scale
+      weapon.scene.position.set(0.5, 0.5, 0); // Example adjustments
+      weapon.scene.rotation.set(Math.PI / 2, 0, Math.PI / 2);
+      weapon.scene.scale.set(2, 2, 2);
+    }
+
+    if (onReady) {
+      onReady();
+    }
+  }, [weapon, onReady]);
+
+  const [isSwinging, setIsSwinging] = useState(false);
+
+  const swingAxe = () => {
+    if (!weaponRef.current || isSwinging) return;
+
+    setIsSwinging(true);
+
+    if (weaponRef.current) {
+        if (!weaponRef.current) return;
+        if (weaponRef.current.rotation) {
+          gsap.to(weaponRef.current.rotation, {
+            duration: 0.5,
+            z: -Math.PI / 2, // Swing down
+            ease: "power3.inOut",
+            onUpdate: () => {
+              weaponRef.current?.updateMatrixWorld();
+              weaponRef.current?.updateMatrix();
+            }, // Add comma here
+          });
+        }
+    }
+
+    setTimeout(() => {
+      if (weaponRef.current) {
+        gsap.to(weaponRef.current.rotation, {
+          duration: 0.5,
+          z: Math.PI / 2, // Return to original position
+          ease: "power3.inOut",
+          onUpdate: () => {
+            weaponRef.current?.updateMatrixWorld();
+            weaponRef.current?.updateMatrix();
+            setIsSwinging(false);
+          },
+        });
+      }
+    }, 500);
+  };
+
   return (
     <>
       <RigidBody
@@ -734,6 +799,7 @@ export default function Player({
 
 // Update preload path
 useGLTF.preload('/bob_the_builder_capoeira_rig_animation.glb');
+useGLTF.preload('/medieval_axe.glb');
 let entities: { [id: string]: any } = {};
 
 function registerEntity(entity: { id: string; type: string; maxHealth: number; currentHealth: number; position: THREE.Vector3; }) {
@@ -749,4 +815,3 @@ function updateEntityPosition(id: string, position: THREE.Vector3) {
     entities[id].position = position;
   }
 }
-
