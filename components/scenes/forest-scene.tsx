@@ -31,7 +31,6 @@ export default function ForestScene() {
 
   // Load forest ground model
   const { scene: forestGroundScene } = useGLTF('/low_poly_forest.glb') // Changed to the low poly forest
-  const { scene: treeScene } = useGLTF('/decorative_tree.glb')
 
   useEffect(() => {
     scene.background = new THREE.Color("#222233")
@@ -64,7 +63,7 @@ export default function ForestScene() {
       const x = (Math.random() - 0.5) * 80;
       const z = (Math.random() - 0.5) * 80;
       const position: [number, number, number] = [x, 0, z];
-      const scale = 0.8 + Math.random() * 0.4;
+      const scale = Math.random() * 0.5 + 0.5;
       const rotation = Math.random() * Math.PI * 2;
       initialTreeData.push({ position, scale, rotation });
     }
@@ -123,29 +122,11 @@ export default function ForestScene() {
       {/* Forest Ground Model */}
       <primitive
         object={forestGroundScene.clone()}
-        position={[0, 3.6, 0]}
-        scale={[1, 1, 0.8]}
+        position={[0, 1.0, 0]}
+        scale={[0.5, 0.5, 0.5]}
         receiveShadow
       />
 
-      {/* Trees */}
-      {treeData.map((tree, i) => {
-        return (
-          <group
-            key={i}
-            position={tree.position}
-            scale={[tree.scale, tree.scale, tree.scale]}
-            rotation={[0, tree.rotation, 0]}
-          >
-            <primitive
-              object={treeScene.clone()}
-              scale={[1, 1, 1]}
-              position={[0, 0, 0]}
-              castShadow
-            />
-          </group>
-        );
-      })}
       {/* Coins */}
       {Array.from({ length: 20 }).map((_, i) => {
         const x = (Math.random() - 0.5) * 40
